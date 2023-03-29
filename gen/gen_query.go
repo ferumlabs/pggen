@@ -5,9 +5,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/opendoor/pggen/gen/internal/config"
-	"github.com/opendoor/pggen/gen/internal/meta"
-	"github.com/opendoor/pggen/gen/internal/names"
+	"github.com/ferumlabs/pggen/gen/internal/config"
+	"github.com/ferumlabs/pggen/gen/internal/meta"
+	"github.com/ferumlabs/pggen/gen/internal/names"
 )
 
 func (g *Generator) genQueries(

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/opendoor/pggen/gen"
+	"github.com/ferumlabs/pggen/gen"
 )
 
 func usage(ok bool) {

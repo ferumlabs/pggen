@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/opendoor/pggen/gen/internal/names"
+	"github.com/ferumlabs/pggen/gen/internal/names"
 )
 
 // The configuration file format used to specify the database objects

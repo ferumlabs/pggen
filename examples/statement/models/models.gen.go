@@ -7,9 +7,9 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/ethanpailes/pgtypes"
-	"github.com/opendoor/pggen"
-	"github.com/opendoor/pggen/include"
-	"github.com/opendoor/pggen/unstable"
+	"github.com/ferumlabs/pggen"
+	"github.com/ferumlabs/pggen/include"
+	"github.com/ferumlabs/pggen/unstable"
 	"strings"
 	"sync"
 )

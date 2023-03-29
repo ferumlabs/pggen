@@ -3,8 +3,8 @@ package test
 import (
 	"testing"
 
-	"github.com/opendoor/pggen"
-	"github.com/opendoor/pggen/cmd/pggen/test/models"
+	"github.com/ferumlabs/pggen"
+	"github.com/ferumlabs/pggen/cmd/pggen/test/models"
 )
 
 // file: otherschema_test.go

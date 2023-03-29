@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/ferumlabs/pggen/examples/extending_models/models"
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/opendoor/pggen/examples/extending_models/models"
 )
 
 func main() {

@@ -1,7 +1,7 @@
 package pggen
 
 import (
-	"github.com/opendoor/pggen/unstable"
+	"github.com/ferumlabs/pggen/unstable"
 )
 
 // file: errors.go

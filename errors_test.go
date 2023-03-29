@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/opendoor/pggen/unstable"
+	"github.com/ferumlabs/pggen/unstable"
 )
 
 func TestIsNotFoundError(t *testing.T) {

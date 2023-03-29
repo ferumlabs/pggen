@@ -9,8 +9,8 @@ import (
 
 	"github.com/gofrs/uuid"
 
+	"github.com/ferumlabs/pggen/examples/uuid/models"
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/opendoor/pggen/examples/uuid/models"
 )
 
 func main() {

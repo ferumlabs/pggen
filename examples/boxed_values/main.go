@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/ferumlabs/pggen/examples/boxed_values/models"
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/opendoor/pggen/examples/boxed_values/models"
 )
 
 func main() {
@@ -22,9 +22,9 @@ func main() {
 	pgClient := models.NewPGClient(conn)
 
 	ids, err := pgClient.BulkInsertUser(ctx, []models.User{
-		{ Nickname: "Jim", Email: "jim@gmail.com" },
-		{ Nickname: "Bill", Email: "bill@gmail.com" },
-		{ Nickname: "Stacy", Email: "stacy@yahoo.com" },
+		{Nickname: "Jim", Email: "jim@gmail.com"},
+		{Nickname: "Bill", Email: "bill@gmail.com"},
+		{Nickname: "Stacy", Email: "stacy@yahoo.com"},
 	})
 	if err != nil {
 		log.Fatal(err)

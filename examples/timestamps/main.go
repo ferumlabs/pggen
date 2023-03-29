@@ -8,9 +8,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/ferumlabs/pggen"
+	"github.com/ferumlabs/pggen/examples/timestamps/models"
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/opendoor/pggen"
-	"github.com/opendoor/pggen/examples/timestamps/models"
 )
 
 func main() {

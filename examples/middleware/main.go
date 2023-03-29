@@ -8,10 +8,10 @@ import (
 	"os"
 	"sort"
 
+	"github.com/ferumlabs/pggen"
+	"github.com/ferumlabs/pggen/examples/id_in_set/models"
+	"github.com/ferumlabs/pggen/middleware"
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/opendoor/pggen"
-	"github.com/opendoor/pggen/examples/id_in_set/models"
-	"github.com/opendoor/pggen/middleware"
 )
 
 func main() {

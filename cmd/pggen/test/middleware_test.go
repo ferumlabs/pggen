@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/opendoor/pggen"
-	"github.com/opendoor/pggen/middleware"
+	"github.com/ferumlabs/pggen"
+	"github.com/ferumlabs/pggen/middleware"
 )
 
 func TestExecMiddleware(t *testing.T) {

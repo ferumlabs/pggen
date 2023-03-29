@@ -4,8 +4,8 @@ import (
 	"io"
 	"text/template"
 
-	"github.com/opendoor/pggen/gen/internal/config"
-	"github.com/opendoor/pggen/gen/internal/names"
+	"github.com/ferumlabs/pggen/gen/internal/config"
+	"github.com/ferumlabs/pggen/gen/internal/names"
 )
 
 func (g *Generator) genPGClient(into io.Writer, conf *config.DbConfig) error {

@@ -1,4 +1,3 @@
-//
 // Package middleware is used in pggen to add middleware to be executed
 // surrounding the DB calls execution. The intent is to have the ability to add custom
 // logging, metrics, tracing, side effects.
@@ -20,7 +19,7 @@ import (
 	"database/sql/driver"
 	"time"
 
-	"github.com/opendoor/pggen"
+	"github.com/ferumlabs/pggen"
 )
 
 type ExecFunc func(ctx context.Context, query string, args ...interface{}) (sql.Result, error)

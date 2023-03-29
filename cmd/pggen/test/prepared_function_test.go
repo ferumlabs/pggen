@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/opendoor/pggen/cmd/pggen/test/models"
+	"github.com/ferumlabs/pggen/cmd/pggen/test/models"
 )
 
 func TestReturnsText(t *testing.T) {

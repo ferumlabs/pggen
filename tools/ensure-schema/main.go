@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/opendoor/pggen/tools/ensure-schema/lib"
+	"github.com/ferumlabs/pggen/tools/ensure-schema/lib"
 )
 
 func main() {

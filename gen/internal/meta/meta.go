@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/opendoor/pggen/gen/internal/config"
-	"github.com/opendoor/pggen/gen/internal/log"
-	"github.com/opendoor/pggen/gen/internal/names"
-	"github.com/opendoor/pggen/gen/internal/types"
-	"github.com/opendoor/pggen/gen/internal/utils"
+	"github.com/ferumlabs/pggen/gen/internal/config"
+	"github.com/ferumlabs/pggen/gen/internal/log"
+	"github.com/ferumlabs/pggen/gen/internal/names"
+	"github.com/ferumlabs/pggen/gen/internal/types"
+	"github.com/ferumlabs/pggen/gen/internal/utils"
 )
 
 //

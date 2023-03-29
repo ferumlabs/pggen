@@ -10,11 +10,11 @@ import (
 	"github.com/ethanpailes/pgtypes"
 	"github.com/jinzhu/inflection"
 
-	"github.com/opendoor/pggen/gen/internal/config"
-	"github.com/opendoor/pggen/gen/internal/log"
-	"github.com/opendoor/pggen/gen/internal/names"
-	"github.com/opendoor/pggen/gen/internal/types"
-	"github.com/opendoor/pggen/include"
+	"github.com/ferumlabs/pggen/gen/internal/config"
+	"github.com/ferumlabs/pggen/gen/internal/log"
+	"github.com/ferumlabs/pggen/gen/internal/names"
+	"github.com/ferumlabs/pggen/gen/internal/types"
+	"github.com/ferumlabs/pggen/include"
 )
 
 // tablesMeta contains information _all_ of the tables that pggen is awair of

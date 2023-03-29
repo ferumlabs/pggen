@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/opendoor/pggen/cmd/pggen/test/models"
+	"github.com/ferumlabs/pggen/cmd/pggen/test/models"
 )
 
 // file: race_test.go
@@ -14,9 +14,10 @@ import (
 //
 
 // NOTE: I have been able to confirm that this test will reliably turn up
-//       data races by commenting out all the lock calls in the generated Scan routine
-//       for OffsetTableFilling and then running `go test -race --run TestOffsetTableFilling`
-//       in a loop. Re-generating the models code makes the race warnings go away.
+//
+//	data races by commenting out all the lock calls in the generated Scan routine
+//	for OffsetTableFilling and then running `go test -race --run TestOffsetTableFilling`
+//	in a loop. Re-generating the models code makes the race warnings go away.
 func TestOffsetTableFilling(t *testing.T) {
 	nscanners := 50
 	nmods := 10

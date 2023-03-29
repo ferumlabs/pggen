@@ -5,7 +5,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/opendoor/pggen/gen/internal/utils"
+	"github.com/ferumlabs/pggen/gen/internal/utils"
 )
 
 func (g *Generator) genPrelude() error {

@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opendoor/pggen"
-	"github.com/opendoor/pggen/cmd/pggen/test/jsontypes"
-	"github.com/opendoor/pggen/cmd/pggen/test/models"
-	"github.com/opendoor/pggen/include"
+	"github.com/ferumlabs/pggen"
+	"github.com/ferumlabs/pggen/cmd/pggen/test/jsontypes"
+	"github.com/ferumlabs/pggen/cmd/pggen/test/models"
+	"github.com/ferumlabs/pggen/include"
 )
 
 func TestInsertSmallEntity(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/opendoor/pggen/gen/internal/config"
+	"github.com/ferumlabs/pggen/gen/internal/config"
 )
 
 type Resolver struct {

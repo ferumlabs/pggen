@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opendoor/pggen"
-	"github.com/opendoor/pggen/cmd/pggen/test/global_ts_models"
-	"github.com/opendoor/pggen/cmd/pggen/test/models"
+	"github.com/ferumlabs/pggen"
+	"github.com/ferumlabs/pggen/cmd/pggen/test/global_ts_models"
+	"github.com/ferumlabs/pggen/cmd/pggen/test/models"
 )
 
 func TestTimestampsBoth(t *testing.T) {

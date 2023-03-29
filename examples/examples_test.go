@@ -43,7 +43,7 @@ import (
 	"strings"
 	"testing"
 
-	ensureSchema "github.com/opendoor/pggen/tools/ensure-schema/lib"
+	ensureSchema "github.com/ferumlabs/pggen/tools/ensure-schema/lib"
 )
 
 // for examples with output that can vary with time, we need to fudge our output

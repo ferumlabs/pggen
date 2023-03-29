@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/opendoor/pggen/cmd/pggen/test/overridden_models"
+	"github.com/ferumlabs/pggen/cmd/pggen/test/overridden_models"
 )
 
 func TestOverriddenGetTimes(t *testing.T) {

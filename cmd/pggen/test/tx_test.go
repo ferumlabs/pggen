@@ -3,7 +3,7 @@ package test
 import (
 	"testing"
 
-	"github.com/opendoor/pggen/cmd/pggen/test/models"
+	"github.com/ferumlabs/pggen/cmd/pggen/test/models"
 )
 
 func TestTxRollback(t *testing.T) {

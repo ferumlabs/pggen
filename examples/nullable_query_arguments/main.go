@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/ferumlabs/pggen/examples/nullable_query_arguments/models"
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/opendoor/pggen/examples/nullable_query_arguments/models"
 )
 
 func main() {

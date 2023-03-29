@@ -7,12 +7,13 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"github.com/jackc/pgconn"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/opendoor/pggen"
+	"github.com/jackc/pgconn"
+
+	"github.com/ferumlabs/pggen"
 )
 
 type fieldNameAndIdx struct {
@@ -249,6 +250,7 @@ func (s *pggenSinkScanner) Scan(value interface{}) error {
 //     go version.
 //   - jackc/pgx inexplicably returns a 'string' value for postgres 'time'
 //     types rather than a 'time.Time' value as you would expect.
+//
 // NOTE: while this Valuer is meant to handle nulls, it can be used
 // for non-nullable values as well.
 type pggenNullTime struct {

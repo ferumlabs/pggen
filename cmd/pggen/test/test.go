@@ -14,8 +14,8 @@ import (
 	_ "github.com/jackc/pgx/v4/stdlib" // load driver
 	_ "github.com/lib/pq"              // load driver (we still test against lib/pq)
 
-	"github.com/opendoor/pggen/cmd/pggen/test/models"
-	ensureSchema "github.com/opendoor/pggen/tools/ensure-schema/lib"
+	"github.com/ferumlabs/pggen/cmd/pggen/test/models"
+	ensureSchema "github.com/ferumlabs/pggen/tools/ensure-schema/lib"
 )
 
 var (
