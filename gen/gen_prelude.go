@@ -61,9 +61,7 @@ func genBulkInsertStmt(
 
 	genInsertCommon(&ret, table, fields, nrecords, pkeyName, includeID, defaultFieldSet)
 
-	ret.WriteString(" RETURNING \"")
-	ret.WriteString(pkeyName)
-	ret.WriteRune('"')
+	ret.WriteString(" RETURNING *")
 
 	return ret.String()
 }

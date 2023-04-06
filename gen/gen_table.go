@@ -215,7 +215,7 @@ func (p *PGClient) Insert{{ .GoName }}(
 	ctx context.Context,
 	value *{{ .GoName }},
 	opts ...pggen.InsertOpt,
-) (ret {{ .PkeyCol.TypeInfo.Name }}, err error) {
+) (ret {{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, err error) {
 	return p.impl.insert{{ .GoName }}(ctx, value, opts...)
 }
 // Insert a {{ .GoName }} into the database. Returns the primary
@@ -224,7 +224,7 @@ func (tx *TxPGClient) Insert{{ .GoName }}(
 	ctx context.Context,
 	value *{{ .GoName }},
 	opts ...pggen.InsertOpt,
-) (ret {{ .PkeyCol.TypeInfo.Name }}, err error) {
+) (ret {{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, err error) {
 	return tx.impl.insert{{ .GoName }}(ctx, value, opts...)
 }
 // Insert a {{ .GoName }} into the database. Returns the primary
@@ -233,7 +233,7 @@ func (conn *ConnPGClient) Insert{{ .GoName }}(
 	ctx context.Context,
 	value *{{ .GoName }},
 	opts ...pggen.InsertOpt,
-) (ret {{ .PkeyCol.TypeInfo.Name }}, err error) {
+) (ret {{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, err error) {
 	return conn.impl.insert{{ .GoName }}(ctx, value, opts...)
 }
 // Insert a {{ .GoName }} into the database. Returns the primary
@@ -242,18 +242,18 @@ func (p *pgClientImpl) insert{{ .GoName }}(
 	ctx context.Context,
 	value *{{ .GoName }},
 	opts ...pggen.InsertOpt,
-) (ret {{ .PkeyCol.TypeInfo.Name }}, err error) {
-	var ids []{{ .PkeyCol.TypeInfo.Name }}
-	ids, err = p.bulkInsert{{ .GoName }}(ctx, []{{ .GoName }}{*value}, opts...)
+) (ret {{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, err error) {
+	var rets []{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}
+	rets, err = p.bulkInsert{{ .GoName }}(ctx, []{{ .GoName }}{*value}, opts...)
 	if err != nil {
 		return ret, p.client.errorConverter(err)
 	}
 
-	if len(ids) != 1 {
-		return ret, p.client.errorConverter(fmt.Errorf("inserting a {{ .GoName }}: %d ids (expected 1)", len(ids)))
+	if len(rets) != 1 {
+		return ret, p.client.errorConverter(fmt.Errorf("inserting a {{ .GoName }}: %d rows (expected 1)", len(rets)))
 	}
 
-	ret = ids[0]
+	ret = rets[0]
 	return
 }
 
@@ -263,7 +263,7 @@ func (p *PGClient) BulkInsert{{ .GoName }}(
 	ctx context.Context,
 	values []{{ .GoName }},
 	opts ...pggen.InsertOpt,
-) ([]{{ .PkeyCol.TypeInfo.Name }}, error) {
+) ([]{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, error) {
 	return p.impl.bulkInsert{{ .GoName }}(ctx, values, opts...)
 }
 // Insert a list of {{ .GoName }}. Returns a list of the primary keys of
@@ -272,7 +272,7 @@ func (tx *TxPGClient) BulkInsert{{ .GoName }}(
 	ctx context.Context,
 	values []{{ .GoName }},
 	opts ...pggen.InsertOpt,
-) ([]{{ .PkeyCol.TypeInfo.Name }}, error) {
+) ([]{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, error) {
 	return tx.impl.bulkInsert{{ .GoName }}(ctx, values, opts...)
 }
 // Insert a list of {{ .GoName }}. Returns a list of the primary keys of
@@ -281,7 +281,7 @@ func (conn *ConnPGClient) BulkInsert{{ .GoName }}(
 	ctx context.Context,
 	values []{{ .GoName }},
 	opts ...pggen.InsertOpt,
-) ([]{{ .PkeyCol.TypeInfo.Name }}, error) {
+) ([]{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, error) {
 	return conn.impl.bulkInsert{{ .GoName }}(ctx, values, opts...)
 }
 // Insert a list of {{ .GoName }}. Returns a list of the primary keys of
@@ -290,9 +290,9 @@ func (p *pgClientImpl) bulkInsert{{ .GoName }}(
 	ctx context.Context,
 	values []{{ .GoName }},
 	opts ...pggen.InsertOpt,
-) ([]{{ .PkeyCol.TypeInfo.Name }}, error) {
+) ([]{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, error) {
 	if len(values) == 0 {
-		return []{{ .PkeyCol.TypeInfo.Name }}{}, nil
+		return []{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}{}, nil
 	}
 
 	opt := pggen.InsertOptions{}
@@ -383,17 +383,17 @@ func (p *pgClientImpl) bulkInsert{{ .GoName }}(
 	}
 	defer rows.Close()
 
-	ids := make([]{{ .PkeyCol.TypeInfo.Name }}, 0, len(values))
+	rets := make([]{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, 0, len(values))
 	for rows.Next() {
-		var id {{ .PkeyCol.TypeInfo.Name }}
-		err = rows.Scan({{ call .PkeyCol.TypeInfo.SqlReceiver "id" }})
+		var ret {{ .GoName }}
+		err = ret.Scan(ctx, p.client, rows)
 		if err != nil {
 			return nil, p.client.errorConverter(err)
 		}
-		ids = append(ids, id)
+		rets = append(rets, {{ if .Meta.Config.BoxResults }}&{{ end }}ret)
 	}
 
-	return ids, nil
+	return rets, nil
 }
 
 // bit indicies for 'fieldMask' parameters
@@ -434,7 +434,7 @@ func (p *PGClient) Update{{ .GoName }}(
 	value *{{ .GoName }},
 	fieldMask pggen.FieldSet,
 	opts ...pggen.UpdateOpt,
-) (ret {{ .PkeyCol.TypeInfo.Name }}, err error) {
+) (ret {{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, err error) {
 	return p.impl.update{{ .GoName }}(ctx, value, fieldMask, opts...)
 }
 // Update a {{ .GoName }}. 'value' must at the least have
@@ -447,7 +447,7 @@ func (tx *TxPGClient) Update{{ .GoName }}(
 	value *{{ .GoName }},
 	fieldMask pggen.FieldSet,
 	opts ...pggen.UpdateOpt,
-) (ret {{ .PkeyCol.TypeInfo.Name }}, err error) {
+) (ret {{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, err error) {
 	return tx.impl.update{{ .GoName }}(ctx, value, fieldMask, opts...)
 }
 // Update a {{ .GoName }}. 'value' must at the least have
@@ -460,7 +460,7 @@ func (conn *ConnPGClient) Update{{ .GoName }}(
 	value *{{ .GoName }},
 	fieldMask pggen.FieldSet,
 	opts ...pggen.UpdateOpt,
-) (ret {{ .PkeyCol.TypeInfo.Name }}, err error) {
+) (ret {{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, err error) {
 	return conn.impl.update{{ .GoName }}(ctx, value, fieldMask, opts...)
 }
 func (p *pgClientImpl) update{{ .GoName }}(
@@ -468,7 +468,9 @@ func (p *pgClientImpl) update{{ .GoName }}(
 	value *{{ .GoName }},
 	fieldMask pggen.FieldSet,
 	opts ...pggen.UpdateOpt,
-) (ret {{ .PkeyCol.TypeInfo.Name }}, err error) {
+) ({{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, error) {
+	var ret {{ .GoName }}
+
 	opt := pggen.UpdateOptions{}
 	for _, o := range opts {
 		o(&opt)
@@ -517,14 +519,19 @@ func (p *pgClientImpl) update{{ .GoName }}(
 	// add the primary key arg for the WHERE condition
 	args = append(args, value.{{ .PkeyCol.GoName }})
 
-	var id {{ .PkeyCol.TypeInfo.Name }}
-	err = p.db.QueryRowContext(ctx, updateStmt, args...).
-                Scan({{ call .PkeyCol.TypeInfo.SqlReceiver "id" }})
+	rows, err := p.db.QueryContext(ctx, updateStmt, args...)
+	if err != nil {
+		return ret, p.client.errorConverter(err)
+	}
+	defer rows.Close()
+	rows.Next()
+	
+	err = ret.Scan(ctx, p.client, rows)
 	if err != nil {
 		return ret, p.client.errorConverter(err)
 	}
 
-	return id, nil
+	return {{ if .Meta.Config.BoxResults }}&{{ end }}ret, nil
 }
 
 // Upsert a {{ .GoName }} value. If the given value conflicts with
@@ -537,18 +544,18 @@ func (p *PGClient) Upsert{{ .GoName }}(
 	constraintNames []string,
 	fieldMask pggen.FieldSet,
 	opts ...pggen.UpsertOpt,
-) (ret {{ .PkeyCol.TypeInfo.Name }}, err error) {
-	var val []{{ .PkeyCol.TypeInfo.Name }}
-	val, err = p.impl.bulkUpsert{{ .GoName }}(ctx, []{{ .GoName }}{*value}, constraintNames, fieldMask, opts...)
+) (ret {{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, err error) {
+	var vals []{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}
+	vals, err = p.impl.bulkUpsert{{ .GoName }}(ctx, []{{ .GoName }}{*value}, constraintNames, fieldMask, opts...)
 	if err != nil {
 		return
 	}
-	if len(val) == 1 {
-		return val[0], nil
+	if len(vals) == 1 {
+		return vals[0], nil
 	}
 
 	// only possible if no upsert fields were specified by the field mask
-	return value.{{ .PkeyCol.GoName }}, nil
+	return ret, nil
 }
 // Upsert a {{ .GoName }} value. If the given value conflicts with
 // an existing row in the database, use the provided value to update that row
@@ -560,18 +567,18 @@ func (tx *TxPGClient) Upsert{{ .GoName }}(
 	constraintNames []string,
 	fieldMask pggen.FieldSet,
 	opts ...pggen.UpsertOpt,
-) (ret {{ .PkeyCol.TypeInfo.Name }}, err error) {
-	var val []{{ .PkeyCol.TypeInfo.Name }}
-	val, err = tx.impl.bulkUpsert{{ .GoName }}(ctx, []{{ .GoName }}{*value}, constraintNames, fieldMask, opts...)
+) (ret {{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, err error) {
+	var vals []{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}
+	vals, err = tx.impl.bulkUpsert{{ .GoName }}(ctx, []{{ .GoName }}{*value}, constraintNames, fieldMask, opts...)
 	if err != nil {
 		return
 	}
-	if len(val) == 1 {
-		return val[0], nil
+	if len(vals) == 1 {
+		return vals[0], nil
 	}
 
 	// only possible if no upsert fields were specified by the field mask
-	return value.{{ .PkeyCol.GoName }}, nil
+	return ret, nil
 }
 // Upsert a {{ .GoName }} value. If the given value conflicts with
 // an existing row in the database, use the provided value to update that row
@@ -583,18 +590,18 @@ func (conn *ConnPGClient) Upsert{{ .GoName }}(
 	constraintNames []string,
 	fieldMask pggen.FieldSet,
 	opts ...pggen.UpsertOpt,
-) (ret {{ .PkeyCol.TypeInfo.Name }}, err error) {
-	var val []{{ .PkeyCol.TypeInfo.Name }}
-	val, err = conn.impl.bulkUpsert{{ .GoName }}(ctx, []{{ .GoName }}{*value}, constraintNames, fieldMask, opts...)
+) (ret {{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, err error) {
+	var vals []{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}
+	vals, err = conn.impl.bulkUpsert{{ .GoName }}(ctx, []{{ .GoName }}{*value}, constraintNames, fieldMask, opts...)
 	if err != nil {
 		return
 	}
-	if len(val) == 1 {
-		return val[0], nil
+	if len(vals) == 1 {
+		return vals[0], nil
 	}
 
 	// only possible if no upsert fields were specified by the field mask
-	return value.{{ .PkeyCol.GoName }}, nil
+	return ret, nil
 }
 
 
@@ -608,7 +615,7 @@ func (p *PGClient) BulkUpsert{{ .GoName }}(
 	constraintNames []string,
 	fieldMask pggen.FieldSet,
 	opts ...pggen.UpsertOpt,
-) (ret []{{ .PkeyCol.TypeInfo.Name }}, err error) {
+) (ret []{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, err error) {
 	return p.impl.bulkUpsert{{ .GoName }}(ctx, values, constraintNames, fieldMask, opts...)
 }
 // Upsert a set of {{ .GoName }} values. If any of the given values conflict with
@@ -621,7 +628,7 @@ func (tx *TxPGClient) BulkUpsert{{ .GoName }}(
 	constraintNames []string,
 	fieldMask pggen.FieldSet,
 	opts ...pggen.UpsertOpt,
-) (ret []{{ .PkeyCol.TypeInfo.Name }}, err error) {
+) (ret []{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, err error) {
 	return tx.impl.bulkUpsert{{ .GoName }}(ctx, values, constraintNames, fieldMask, opts...)
 }
 // Upsert a set of {{ .GoName }} values. If any of the given values conflict with
@@ -634,7 +641,7 @@ func (conn *ConnPGClient) BulkUpsert{{ .GoName }}(
 	constraintNames []string,
 	fieldMask pggen.FieldSet,
 	opts ...pggen.UpsertOpt,
-) (ret []{{ .PkeyCol.TypeInfo.Name }}, err error) {
+) (ret []{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, err error) {
 	return conn.impl.bulkUpsert{{ .GoName }}(ctx, values, constraintNames, fieldMask, opts...)
 }
 func (p *pgClientImpl) bulkUpsert{{ .GoName }}(
@@ -643,9 +650,9 @@ func (p *pgClientImpl) bulkUpsert{{ .GoName }}(
 	constraintNames []string,
 	fieldMask pggen.FieldSet,
 	opts ...pggen.UpsertOpt,
-) ([]{{ .PkeyCol.TypeInfo.Name }}, error) {
+) ([]{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, error) {
 	if len(values) == 0 {
-		return []{{ .PkeyCol.TypeInfo.Name }}{}, nil
+		return []{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}{}, nil
 	}
 
 	options := pggen.UpsertOptions{}
@@ -749,7 +756,7 @@ func (p *pgClientImpl) bulkUpsert{{ .GoName }}(
 		stmt.WriteString("ON CONFLICT DO NOTHING")
 	}
 
-	stmt.WriteString(` + "`" + ` RETURNING "{{ .PkeyCol.PgName }}"` + "`" + `)
+	stmt.WriteString(` + "`" + ` RETURNING *` + "`" + `)
 
 	args := make([]interface{}, 0, {{ len .Meta.Info.Cols }} * len(values))
 	for _, v := range values {
@@ -782,17 +789,17 @@ func (p *pgClientImpl) bulkUpsert{{ .GoName }}(
 	}
 	defer rows.Close()
 
-	ids := make([]{{ .PkeyCol.TypeInfo.Name }}, 0, len(values))
+	vals := make([]{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, 0, len(values))
 	for rows.Next() {
-		var id {{ .PkeyCol.TypeInfo.Name }}
-		err = rows.Scan({{ call .PkeyCol.TypeInfo.SqlReceiver "id" }})
+		var val {{ .GoName }}
+		err = val.Scan(ctx, p.client, rows)
 		if err != nil {
 			return nil, p.client.errorConverter(err)
 		}
-		ids = append(ids, id)
+		vals = append(vals, val)
 	}
 
-	return ids, nil
+	return vals, nil
 }
 
 func (p *PGClient) Delete{{ .GoName }}(
