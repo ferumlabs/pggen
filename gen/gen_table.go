@@ -23,9 +23,9 @@ func (g *Generator) genTables(into io.Writer, tables []config.TableConfig) error
 	g.imports[`"strings"`] = true
 	g.imports[`"sync"`] = true
 	g.imports[`"github.com/ethanpailes/pgtypes"`] = true
-	g.imports[`"github.com/opendoor/pggen/include"`] = true
-	g.imports[`"github.com/opendoor/pggen/unstable"`] = true
-	g.imports[`"github.com/opendoor/pggen"`] = true
+	g.imports[`"github.com/ferumlabs/pggen/include"`] = true
+	g.imports[`"github.com/ferumlabs/pggen/unstable"`] = true
+	g.imports[`"github.com/ferumlabs/pggen"`] = true
 
 	for i := range tables {
 		err := g.genTable(into, &tables[i])

@@ -41,7 +41,7 @@ import (
 	"time"
 	"github.com/jackc/pgconn"
 
-	"github.com/opendoor/pggen"
+	"github.com/ferumlabs/pggen"
 )
 
 type fieldNameAndIdx struct {

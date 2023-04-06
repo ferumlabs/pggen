@@ -25,7 +25,7 @@ func (g *Generator) genQueries(
 	g.imports[`"context"`] = true
 	g.imports[`"fmt"`] = true
 
-	g.imports[`"github.com/opendoor/pggen/unstable"`] = true
+	g.imports[`"github.com/ferumlabs/pggen/unstable"`] = true
 	// HACK: not really a type, but the type resolver can be used to ensure that
 	//       exactly one copy of this declaration makes it into the final output.
 	err := g.typeResolver.EmitType("ensure-unstable-used", "sig", "var _ = unstable.NotFoundError{}")

@@ -337,7 +337,7 @@ require_query_comments = true
 		name: "BadImportPath",
 		toml: `
 [[type_override]]
-	pkg = "github.com/opendoor/pggen/examples/query/models" # note lack of quotes
+	pkg = "github.com/ferumlabs/pggen/examples/query/models" # note lack of quotes
 		`,
 		exitCode: 1,
 		stderrRE: `import paths without spaces in them should be quoted strings`,

@@ -9,7 +9,7 @@ import (
 )
 
 func (g *Generator) genPGClient(into io.Writer, conf *config.DbConfig) error {
-	g.imports[`"github.com/opendoor/pggen"`] = true
+	g.imports[`"github.com/ferumlabs/pggen"`] = true
 	g.imports[`"database/sql"`] = true
 	g.imports[`"sync"`] = true
 
