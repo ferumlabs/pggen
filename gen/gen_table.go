@@ -477,7 +477,7 @@ func (p *pgClientImpl) update{{ .GoName }}(
 	}	
 
 	if !fieldMask.Test({{ .GoName }}{{ .PkeyCol.GoName }}FieldIndex) {
-		return ret, p.client.errorConverter(fmt.Errorf(` + "`" + `primary key required for updates to '{{ .PgName }}'` + "`" + `))
+		return {{ if .Meta.Config.BoxResults }}&{{ end }}ret, p.client.errorConverter(fmt.Errorf(` + "`" + `primary key required for updates to '{{ .PgName }}'` + "`" + `))
 	}
 
 	{{- if .Meta.HasUpdatedAtField }}
@@ -521,14 +521,14 @@ func (p *pgClientImpl) update{{ .GoName }}(
 
 	rows, err := p.db.QueryContext(ctx, updateStmt, args...)
 	if err != nil {
-		return ret, p.client.errorConverter(err)
+		return {{ if .Meta.Config.BoxResults }}&{{ end }}ret, p.client.errorConverter(err)
 	}
 	defer rows.Close()
 	rows.Next()
 	
 	err = ret.Scan(ctx, p.client, rows)
 	if err != nil {
-		return ret, p.client.errorConverter(err)
+		return {{ if .Meta.Config.BoxResults }}&{{ end }}ret, p.client.errorConverter(err)
 	}
 
 	return {{ if .Meta.Config.BoxResults }}&{{ end }}ret, nil
@@ -796,7 +796,7 @@ func (p *pgClientImpl) bulkUpsert{{ .GoName }}(
 		if err != nil {
 			return nil, p.client.errorConverter(err)
 		}
-		vals = append(vals, val)
+		vals = append(vals, {{ if .Meta.Config.BoxResults }}&{{ end }}val)
 	}
 
 	return vals, nil
