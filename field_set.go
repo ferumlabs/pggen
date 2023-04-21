@@ -66,3 +66,14 @@ func (fs FieldSet) Intersection(rhs FieldSet) FieldSet {
 	}
 	return FieldSet{b: fs.b.Intersection(rhs.b)}
 }
+
+// Return the union of the two field sets. Equivalent of bitwise OR.
+func (fs FieldSet) Union(rhs FieldSet) FieldSet {
+	if fs.b == nil {
+		return rhs.Clone()
+	}
+	if rhs.b == nil {
+		return fs.Clone()
+	}
+	return FieldSet{b: fs.b.Union(rhs.b)}
+}
