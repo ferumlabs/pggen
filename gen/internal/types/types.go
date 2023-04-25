@@ -180,43 +180,24 @@ func (r *Resolver) initTypeTable(overrides []config.TypeOverride) (err error) {
 			convertFunc = convertUserTmpl(tmpl)
 		}
 
-		info, inMap := r.pgType2GoType[override.PgTypeName]
-		if inMap {
-			if len(override.TypeName) > 0 {
-				info.Name = override.TypeName
-			}
-			if len(override.NullableTypeName) > 0 {
-				info.NullName = "*" + override.TypeName
-				info.ScanNullName = override.NullableTypeName
-				info.NullConvertFunc = convertFunc
-			}
-			if len(override.Pkg) > 0 {
-				info.Pkg = override.Pkg
-			}
-			if len(override.NullPkg) > 0 {
-				info.NullPkg = override.NullPkg
-			}
-		} else {
-			if len(override.TypeName) == 0 ||
-				len(override.NullableTypeName) == 0 {
-				return fmt.Errorf(
-					"`type_name` and `nullable_type_name` must both be " +
-						"provided for a type that pggen does not have default " +
-						"values for.")
-			}
-
-			r.pgType2GoType[override.PgTypeName] = &Info{
-				Name:            override.TypeName,
-				Pkg:             override.Pkg,
-				NullName:        "*" + override.TypeName,
-				ScanNullName:    override.NullableTypeName,
-				NullConvertFunc: convertFunc,
-				NullPkg:         override.NullPkg,
-				SqlReceiver:     refWrap,
-				NullSqlReceiver: refWrap,
-				SqlArgument:     idWrap,
-				NullSqlArgument: idWrap,
-			}
+		if len(override.TypeName) == 0 ||
+			len(override.NullableTypeName) == 0 {
+			return fmt.Errorf(
+				"`type_name` and `nullable_type_name` must both be " +
+					"provided for a type that pggen does not have default " +
+					"values for.")
+		}
+		r.pgType2GoType[override.PgTypeName] = &Info{
+			Name:            override.TypeName,
+			Pkg:             override.Pkg,
+			NullName:        "*" + override.TypeName,
+			ScanNullName:    override.NullableTypeName,
+			NullConvertFunc: convertFunc,
+			NullPkg:         override.NullPkg,
+			SqlReceiver:     refWrap,
+			NullSqlReceiver: refWrap,
+			SqlArgument:     idWrap,
+			NullSqlArgument: idWrap,
 		}
 	}
 
