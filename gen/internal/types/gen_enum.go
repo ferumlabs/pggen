@@ -224,10 +224,10 @@ var enumSigTmpl = template.Must(template.New("enum-sig-tmpl").Parse(`
 `))
 
 var enumTmpl = template.Must(template.New("enum-tmpl").Parse(`
-type {{ .TypeName }} int
+type {{ .TypeName }} string
 const (
 {{- range .Variants }}
-	{{ $.TypeName }}{{ .GoName }} {{ $.TypeName }} = iota
+	{{ $.TypeName }}{{ .GoName }} {{ $.TypeName }} = ` + "`" + `{{ .Value }}` + "`" + `
 {{- end }}
 )
 
