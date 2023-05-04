@@ -238,7 +238,7 @@ func (t {{ .TypeName }}) String() string {
 		return ` + "`" + `{{ .Value }}` + "`" + `
 	{{- end }}
 	default:
-		panic(fmt.Sprintf("invalid {{ .TypeName }}: %v", t))
+		panic(fmt.Sprintf("invalid {{ .TypeName }}: %s", string(t)))
 	}
 }
 
@@ -283,7 +283,7 @@ type Null{{ .TypeName }} struct {
 // Scan implements the sql.Scanner interface
 func (n *Null{{ .TypeName }}) Scan(value interface{}) error {
 	if value == nil {
-		n.{{ .TypeName }}, n.Valid = {{ .TypeName }}(0), false
+		n.{{ .TypeName }}, n.Valid = {{ .TypeName }}(""), false
 		return nil
 	}
 
