@@ -130,6 +130,8 @@ type TableConfig struct {
 	DeletedAtField string `toml:"deleted_at_field"`
 	// A list of extra annotations to add to the generated fields.
 	FieldTags []FieldTag `toml:"field_tags"`
+	// A list of fields that are to be included in the mutable set.
+	MutableFields []string `toml:"mutable_fields"`
 	// A list of annotations indicating types that specific json columns should
 	// be (de)serialized into. By default, all `json` and `jsonb` columns will
 	// become byte arrays.
@@ -137,6 +139,8 @@ type TableConfig struct {
 	// If true, queries that return sliced results will return a slice of pointers.
 	// Otherwise, it will be a slice of struct values.
 	BoxResults bool `toml:"box_results"`
+	// The specified TEXT fields will be generated as enums in go code only.
+	GoEnumFields map[string][]string
 }
 
 // An explicitly configured foreign key relationship which can be attached

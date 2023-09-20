@@ -15,6 +15,8 @@ import (
 	"github.com/ferumlabs/pggen/gen/internal/names"
 	"github.com/ferumlabs/pggen/gen/internal/types"
 	"github.com/ferumlabs/pggen/include"
+
+	"golang.org/x/exp/slices"
 )
 
 // tablesMeta contains information _all_ of the tables that pggen is awair of
@@ -90,7 +92,7 @@ type TableMeta struct {
 
 	// If true, this table has a nullable soft-delete timestamp field
 	HasDeletedAtField bool
-	// True if the deleleted at timestamp has a timezone
+	// True if the deleted at timestamp has a timezone
 	DeletedAtHasTimezone bool
 	// The name of the deleted at field
 	PgDeletedAtField string
@@ -587,6 +589,8 @@ type ColMeta struct {
 	IsPrimary bool
 	// true if this column has a UNIQUE index on it
 	IsUnique bool
+	// if this field is mutable and should be included in the mutable field set (defaults to false).
+	IsMutable bool
 	// the tags to attach to the generated field (a combination of fields
 	// that pggen computes and user provided tags)
 	Tags string
@@ -662,6 +666,7 @@ func (tr *tableResolver) tableInfo(table *config.TableConfig) (PgTableInfo, erro
 		}
 		col.TypeInfo = *typeInfo
 		col.GoName = names.PgToGoName(col.PgName)
+		col.IsMutable = slices.Contains(table.MutableFields, col.PgName)
 		cols = append(cols, col)
 	}
 	if len(cols) == 0 {

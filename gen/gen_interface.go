@@ -78,11 +78,11 @@ type DBQueries interface {
 	// {{ .GoName }} methods
 	Get{{ .GoName }}(ctx context.Context, id {{ .PkeyType }}, opts ...pggen.GetOpt) (*{{ .GoName }}, error)
 	List{{ .GoName }}(ctx context.Context, ids []{{ .PkeyType }}, opts ...pggen.ListOpt) ([]{{- if .BoxResults }}*{{- end }}{{ .GoName }}, error)
-	Insert{{ .GoName }}(ctx context.Context, value *{{ .GoName }}, opts ...pggen.InsertOpt) ({{ .PkeyType }}, error)
-	BulkInsert{{ .GoName }}(ctx context.Context, values []{{ .GoName }}, opts ...pggen.InsertOpt) ([]{{ .PkeyType }}, error)
-	Update{{ .GoName }}(ctx context.Context, value *{{ .GoName }}, fieldMask pggen.FieldSet, opts ...pggen.UpdateOpt) (ret {{ .PkeyType }}, err error)
-	Upsert{{ .GoName }}(ctx context.Context, value *{{ .GoName }}, constraintNames []string, fieldMask pggen.FieldSet, opts ...pggen.UpsertOpt) ({{ .PkeyType }}, error)
-	BulkUpsert{{ .GoName }}(ctx context.Context, values []{{ .GoName }}, constraintNames []string, fieldMask pggen.FieldSet, opts ...pggen.UpsertOpt) ([]{{ .PkeyType }}, error)
+	Insert{{ .GoName }}(ctx context.Context, value *{{ .GoName }}, opts ...pggen.InsertOpt) ({{- if .BoxResults }}*{{- end }}{{ .GoName }}, error)
+	BulkInsert{{ .GoName }}(ctx context.Context, values []{{ .GoName }}, opts ...pggen.InsertOpt) ([]{{- if .BoxResults }}*{{- end }}{{ .GoName }}, error)
+	Update{{ .GoName }}(ctx context.Context, value *{{ .GoName }}, fieldMask pggen.FieldSet, opts ...pggen.UpdateOpt) ({{- if .BoxResults }}*{{- end }}{{ .GoName }}, error)
+	Upsert{{ .GoName }}(ctx context.Context, value *{{ .GoName }}, constraintNames []string, fieldMask pggen.FieldSet, opts ...pggen.UpsertOpt) ({{- if .BoxResults }}*{{- end }}{{ .GoName }}, error)
+	BulkUpsert{{ .GoName }}(ctx context.Context, values []{{ .GoName }}, constraintNames []string, fieldMask pggen.FieldSet, opts ...pggen.UpsertOpt) ([]{{- if .BoxResults }}*{{- end }}{{ .GoName }}, error)
 	Delete{{ .GoName }}(ctx context.Context, id {{ .PkeyType }}, opts ...pggen.DeleteOpt) error
 	BulkDelete{{ .GoName }}(ctx context.Context, ids []{{ .PkeyType }}, opts ...pggen.DeleteOpt) error
 	{{ .GoName }}FillIncludes(ctx context.Context, rec *{{ .GoName }}, includes *include.Spec, opts ...pggen.IncludeOpt) error

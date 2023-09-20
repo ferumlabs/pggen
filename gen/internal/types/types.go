@@ -375,6 +375,19 @@ var timezGoTypeInfo Info = Info{
 	IsTimestampWithZone: true,
 }
 
+var intervalGoTypeInfo Info = Info{
+	Pkg:             `"time"`,
+	Name:            "time.Duration",
+	NullName:        "*time.Duration",
+	ScanNullName:    "pggenNullTime",
+	ScanNullPkg:     "",
+	NullConvertFunc: convertCall("convertNullDuration"),
+	SqlReceiver:     refWrap,
+	NullSqlReceiver: refWrap,
+	SqlArgument:     idWrap,
+	NullSqlArgument: idWrap,
+}
+
 var int64GoTypeInfo Info = Info{
 	Name:            "int64",
 	NullName:        "*int64",
@@ -427,7 +440,6 @@ var defaultPgType2GoType = map[string]*Info{
 	"character varying": &stringGoTypeInfo,
 	"bpchar":            &stringGoTypeInfo,
 	"citext":            &stringGoTypeInfo,
-	"interval":          &stringGoTypeInfo,
 
 	// There is no decimal type in go, so PG money types are returned
 	// as text.
@@ -438,6 +450,7 @@ var defaultPgType2GoType = map[string]*Info{
 	"timestamp without time zone": &timeGoTypeInfo,
 	"timestamp with time zone":    &timezGoTypeInfo,
 	"date":                        &timeGoTypeInfo,
+	"interval":                    &intervalGoTypeInfo,
 
 	"boolean": &boolGoTypeInfo,
 

@@ -408,6 +408,15 @@ const (
 // For use as a 'fieldMask' parameter
 var {{ .GoName }}AllFields pggen.FieldSet = pggen.NewFieldSetFilled({{ len .Meta.Info.Cols }})
 
+// A field set containing all mutable fields for {{ .GoName }}.
+// For use as a 'fieldMask' parameter
+var {{ .GoName }}MutableFields pggen.FieldSet = pggen.NewFieldSet({{ len .Meta.Info.Cols }})
+{{- range .Meta.Info.Cols }}
+{{- if .IsMutable }}.
+Set({{ $.GoName }}{{ .GoName }}FieldIndex, true)
+{{- end }}
+{{- end }}
+
 var defaultableColsFor{{ .GoName }} = func() pggen.FieldSet {
 	fs := pggen.NewFieldSet({{ .GoName }}MaxFieldIndex)
 	{{- range .Meta.Info.Cols }}

@@ -238,7 +238,7 @@ func (t {{ .TypeName }}) String() string {
 		return ` + "`" + `{{ .Value }}` + "`" + `
 	{{- end }}
 	default:
-		panic(fmt.Sprintf("invalid {{ .TypeName }}: %s", string(t)))
+		return fmt.Sprintf("invalid {{ .TypeName }}: %s", string(t))
 	}
 }
 

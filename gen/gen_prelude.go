@@ -40,6 +40,7 @@ import (
 	"sync"
 	"time"
 	"github.com/jackc/pgconn"
+	"github.com/sanyokbig/pqinterval"
 
 	"github.com/ferumlabs/pggen"
 )
@@ -316,6 +317,34 @@ func (n pggenNullTime) Value() (driver.Value, error) {
 func convertNullTime(t pggenNullTime) *time.Time {
 	if t.Valid {
 		return &t.Time
+	}
+	return nil
+}
+
+type pggenNullDuration struct {
+	Duration pqinterval.Duration
+	Valid    bool
+}
+func (n *pggenNullDuration) Scan(value interface{}) error {
+	if value == nil {
+		n.Duration, n.Valid = pqinterval.Duration(0), false
+		return nil
+	}
+	n.Valid = true
+
+	return n.Duration.Scan(value)
+}
+func (n pggenNullDuration) Value() (driver.Value, error) {
+	if !n.Valid {
+		return nil, nil
+	}
+	return n.Duration.Value()
+}
+
+func convertNullDuration(d pggenNullDuration) *time.Duration {
+	if d.Valid {
+		out := time.Duration(d.Duration)
+		return &out
 	}
 	return nil
 }
