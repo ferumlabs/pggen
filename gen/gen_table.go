@@ -158,7 +158,7 @@ func (p *pgClientImpl) list{{ .GoName }}(
 
 	rows, err := p.queryContext(
 		ctx,
-		` + "`" + `SELECT * FROM {{ .PgName }} WHERE "{{ .PkeyCol.PgName }}" = ANY($1)
+		` + "`" + `SELECT {{ range $i, $col := .Meta.Info.Cols }}{{ if $i }},{{ end }}"{{ $col.PgName }}"{{ end }} FROM {{ .PgName }} WHERE "{{ .PkeyCol.PgName }}" = ANY($1)
 		{{- if .Meta.HasDeletedAtField }} AND "{{ .Meta.PgDeletedAtField }}" IS NULL {{ end }}` + "`" + `,
 		pgtypes.Array(ids),
 	)
@@ -183,7 +183,7 @@ func (p *pgClientImpl) list{{ .GoName }}(
 	ret = make([]{{- if .Meta.Config.BoxResults }}*{{- end }}{{ .GoName }}, 0, len(ids))
 	for rows.Next() {
 		var value {{ .GoName }}
-		err = value.Scan(ctx, p.client, rows)
+		err = value.Scan(rows)
 		if err != nil {
 			return nil, p.client.errorConverter(err)
 		}
@@ -386,7 +386,7 @@ func (p *pgClientImpl) bulkInsert{{ .GoName }}(
 	rets := make([]{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, 0, len(values))
 	for rows.Next() {
 		var ret {{ .GoName }}
-		err = ret.Scan(ctx, p.client, rows)
+		err = ret.Scan(rows)
 		if err != nil {
 			return nil, p.client.errorConverter(err)
 		}
@@ -535,7 +535,7 @@ func (p *pgClientImpl) update{{ .GoName }}(
 	defer rows.Close()
 	rows.Next()
 	
-	err = ret.Scan(ctx, p.client, rows)
+	err = ret.Scan(rows)
 	if err != nil {
 		return {{ if .Meta.Config.BoxResults }}&{{ end }}ret, p.client.errorConverter(err)
 	}
@@ -801,7 +801,7 @@ func (p *pgClientImpl) bulkUpsert{{ .GoName }}(
 	vals := make([]{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, 0, len(values))
 	for rows.Next() {
 		var val {{ .GoName }}
-		err = val.Scan(ctx, p.client, rows)
+		err = val.Scan(rows)
 		if err != nil {
 			return nil, p.client.errorConverter(err)
 		}
@@ -922,347 +922,5 @@ func (p *pgClientImpl) bulkDelete{{ .GoName }}(
 var {{ .GoName }}AllIncludes *include.Spec = include.Must(include.Parse(
 	` + "`" + `{{ .AllIncludeSpec }}` + "`" + `,
 ))
-
-func (p *PGClient) {{ .GoName }}FillIncludes(
-	ctx context.Context,
-	rec *{{ .GoName }},
-	includes *include.Spec,
-	opts ...pggen.IncludeOpt,
-) error {
-	return p.impl.private{{ .GoName }}BulkFillIncludes(ctx, []*{{ .GoName }}{rec}, includes)
-}
-func (tx *TxPGClient) {{ .GoName }}FillIncludes(
-	ctx context.Context,
-	rec *{{ .GoName }},
-	includes *include.Spec,
-	opts ...pggen.IncludeOpt,
-) error {
-	return tx.impl.private{{ .GoName }}BulkFillIncludes(ctx, []*{{ .GoName }}{rec}, includes)
-}
-func (conn *ConnPGClient) {{ .GoName }}FillIncludes(
-	ctx context.Context,
-	rec *{{ .GoName }},
-	includes *include.Spec,
-	opts ...pggen.IncludeOpt,
-) error {
-	return conn.impl.private{{ .GoName }}BulkFillIncludes(ctx, []*{{ .GoName }}{rec}, includes)
-}
-
-func (p *PGClient) {{ .GoName }}BulkFillIncludes(
-	ctx context.Context,
-	recs []*{{ .GoName }},
-	includes *include.Spec,
-	opts ...pggen.IncludeOpt,
-) error {
-	return p.impl.private{{ .GoName }}BulkFillIncludes(ctx, recs, includes)
-}
-func (tx *TxPGClient) {{ .GoName }}BulkFillIncludes(
-	ctx context.Context,
-	recs []*{{ .GoName }},
-	includes *include.Spec,
-	opts ...pggen.IncludeOpt,
-) error {
-	return tx.impl.private{{ .GoName }}BulkFillIncludes(ctx, recs, includes)
-}
-func (conn *ConnPGClient) {{ .GoName }}BulkFillIncludes(
-	ctx context.Context,
-	recs []*{{ .GoName }},
-	includes *include.Spec,
-	opts ...pggen.IncludeOpt,
-) error {
-	return conn.impl.private{{ .GoName }}BulkFillIncludes(ctx, recs, includes)
-}
-func (p *pgClientImpl) private{{ .GoName }}BulkFillIncludes(
-	ctx context.Context,
-	recs []*{{ .GoName }},
-	includes *include.Spec,
-	opts ...pggen.IncludeOpt,
-) error {
-	loadedRecordTab := map[string]interface{}{}
-
-	return p.impl{{ .GoName }}BulkFillIncludes(ctx, recs, includes, loadedRecordTab)
-}
-
-func (p *pgClientImpl) impl{{ .GoName }}BulkFillIncludes(
-	ctx context.Context,
-	recs []*{{ .GoName }},
-	includes *include.Spec,
-	loadedRecordTab map[string]interface{},
-) (err error) {
-	if includes.TableName != ` + "`" + `{{ .PgName }}` + "`" + ` {
-		return p.client.errorConverter(fmt.Errorf(
-			` + "`" + `expected includes for '{{ .PgName }}', got '%s'` + "`" + `,
-			includes.TableName,
-		))
-	}
-
-	loadedTab, inMap := loadedRecordTab[` + "`" + `{{ .PgName }}` + "`" + `]
-	if inMap {
-		idToRecord := loadedTab.(map[{{ .PkeyCol.TypeInfo.Name }}]*{{ .GoName }})
-		for _, r := range recs {
-			_, alreadyLoaded := idToRecord[r.{{ .PkeyCol.GoName }}]
-			if !alreadyLoaded {
-				idToRecord[r.{{ .PkeyCol.GoName }}] = r
-			}
-		}
-	} else {
-		idToRecord := make(map[{{ .PkeyCol.TypeInfo.Name }}]*{{ .GoName }}, len(recs))
-		for _, r := range recs {
-			idToRecord[r.{{ .PkeyCol.GoName }}] = r
-		}
-		loadedRecordTab[` + "`" + `{{ .PgName }}` + "`" + `] = idToRecord
-	}
-
-	{{- if (or .Meta.AllIncomingReferences .Meta.AllOutgoingReferences) }}
-	var subSpec *include.Spec
-	var inIncludeSet bool
-	{{- end }}
-
-	{{- range .Meta.AllIncomingReferences }}
-	// Fill in the {{ .PointsFrom.Info.PluralGoName }} if it is in includes
-	subSpec, inIncludeSet = includes.Includes[` + "`" + `{{ .PgPointsFromFieldName }}` + "`" + `]
-	if inIncludeSet {
-		err = p.private{{ $.GoName }}Fill{{ .GoPointsFromFieldName }}(ctx, loadedRecordTab)
-		if err != nil {
-			return p.client.errorConverter(err)
-		}
-
-		subRecs := make([]*{{ .PointsFrom.Info.GoName }}, 0, len(recs))
-		for _, outer := range recs {
-			{{- if .OneToOne }}
-			if outer.{{ .GoPointsFromFieldName }} != nil {
-				subRecs = append(subRecs, outer.{{ .GoPointsFromFieldName }})
-			}
-			{{- else }}
-			for i := range outer.{{ .GoPointsFromFieldName }} {
-				{{- if .Nullable }}
-				if outer.{{ .GoPointsFromFieldName }}[i] == nil {
-					continue
-				}
-				{{- end }}
-				subRecs = append(subRecs, outer.{{ .GoPointsFromFieldName }}[i])
-			}
-			{{- end }}
-		}
-
-		err = p.impl{{ .PointsFrom.Info.GoName }}BulkFillIncludes(ctx, subRecs, subSpec, loadedRecordTab)
-		if err != nil {
-			return p.client.errorConverter(err)
-		}
-	}
-	{{- end }}
-
-	{{- range .Meta.AllOutgoingReferences }}
-	subSpec, inIncludeSet = includes.Includes[` + "`" + `{{ .PgPointsToFieldName }}` + "`" + `]
-	if inIncludeSet {
-		err = p.private{{ $.GoName }}FillParent{{ .GoPointsToFieldName }}(ctx, loadedRecordTab)
-		if err != nil {
-			return p.client.errorConverter(err)
-		}
-
-		subRecs := make([]*{{ .PointsTo.Info.GoName }}, 0, len(recs))
-		for _, outer := range recs {
-			if outer.{{ .GoPointsToFieldName }} != nil {
-				subRecs = append(subRecs, outer.{{ .GoPointsToFieldName }})
-			}
-		}
-
-		err = p.impl{{ .PointsTo.Info.GoName }}BulkFillIncludes(ctx, subRecs, subSpec, loadedRecordTab)
-		if err != nil {
-			return p.client.errorConverter(err)
-		}
-	}
-	{{- end }}
-
-	return
-}
-
-{{- range .Meta.AllIncomingReferences }}
-
-// For a given set of {{ $.GoName }}, fill in all the {{ .PointsFrom.Info.GoName }}
-// connected to them using a single query.
-func (p *pgClientImpl) private{{ $.GoName }}Fill{{ .GoPointsFromFieldName }}(
-	ctx context.Context,
-	loadedRecordTab map[string]interface{},
-) error {
-	parentLoadedTab, inMap := loadedRecordTab[` + "`" + `{{ .PointsTo.Info.PgName }}` + "`" + `]
-	if !inMap {
-		return fmt.Errorf("internal pggen error: table not pre-loaded")
-	}
-	parentIDToRecord := parentLoadedTab.(map[{{ .PointsToField.TypeInfo.Name }}]*{{ .PointsTo.Info.GoName }})
-	ids := make([]{{ .PointsToField.TypeInfo.Name }}, 0, len(parentIDToRecord))
-	for _, rec := range parentIDToRecord {
-		ids = append(ids, rec.{{ .PointsToField.GoName }})
-	}
-
-	var childIDToRecord map[{{ .PointsFrom.Info.PkeyCol.TypeInfo.Name }}]*{{ .PointsFrom.Info.GoName }}
-	childLoadedTab, inMap := loadedRecordTab[` + "`" + `{{ .PointsFrom.Info.PgName }}` + "`" + `]
-	if inMap {
-		childIDToRecord = childLoadedTab.(map[{{ .PointsFrom.Info.PkeyCol.TypeInfo.Name }}]*{{ .PointsFrom.Info.GoName }})
-	} else {
-		childIDToRecord = map[{{ .PointsFrom.Info.PkeyCol.TypeInfo.Name }}]*{{ .PointsFrom.Info.GoName }}{}
-	}
-
-	rows, err := p.queryContext(
-		ctx,
-		` + "`" +
-	`SELECT * FROM {{ .PointsFrom.Info.PgName }}
-		 WHERE "{{ .PointsFromField.PgName }}" = ANY($1)
-		 {{- if .PointsFrom.HasDeletedAtField }} AND "{{ .PointsFrom.PgDeletedAtField }}" IS NULL {{- end }}
-		 ` +
-	"`" + `,
-		pgtypes.Array(ids),
-	)
-	if err != nil {
-		return p.client.errorConverter(err)
-	}
-	defer rows.Close()
-
-	// pull all the child records from the database and associate them with
-	// the correct parent.
-	for rows.Next() {
-		var scannedChildRec {{ .PointsFrom.Info.GoName }}
-		err = scannedChildRec.Scan(ctx, p.client, rows)
-		if err != nil {
-			return p.client.errorConverter(err)
-		}
-
-		var childRec *{{ .PointsFrom.Info.GoName }}
-
-		preloadedChildRec, alreadyLoaded := childIDToRecord[scannedChildRec.{{ .PointsFrom.Info.PkeyCol.GoName }}]
-		if alreadyLoaded {
-			childRec = preloadedChildRec
-		} else {
-			childRec = &scannedChildRec
-			{{- if .PointsFrom.Info.PkeyCol.Nullable }}
-			childIDToRecord[*scannedChildRec.{{ .PointsFrom.Info.PkeyCol.GoName }}] = &scannedChildRec
-			{{- else }}
-			childIDToRecord[scannedChildRec.{{ .PointsFrom.Info.PkeyCol.GoName }}] = &scannedChildRec
-			{{- end }}
-		}
-
-		{{- if .Nullable }}
-		// we know that the foreign key can't be null because of the SQL query
-		parentRec := parentIDToRecord[*childRec.{{ .PointsFromField.GoName }}]
-		{{- else }}
-		parentRec := parentIDToRecord[childRec.{{ .PointsFromField.GoName }}]
-		{{- end }}
-
-		{{- if .OneToOne }}
-		parentRec.{{ .GoPointsFromFieldName }} = childRec
-		{{- else }}
-		parentRec.{{ .GoPointsFromFieldName }} = append(parentRec.{{ .GoPointsFromFieldName }}, childRec)
-		{{- end }}
-	}
-
-	loadedRecordTab[` + "`" + `{{ .PointsFrom.Info.PgName }}` + "`" + `] = childIDToRecord
-
-	return nil
-}
-
-{{ end }}
-{{ range .Meta.AllOutgoingReferences }}
-
-// For a given set of {{ $.GoName }}, fill in all the {{ .PointsTo.Info.GoName }}
-// connected to them using at most one query.
-func (p *pgClientImpl) private{{ $.GoName }}FillParent{{ .GoPointsToFieldName }}(
-	ctx context.Context,
-	loadedRecordTab map[string]interface{},
-) error {
-	// lookup the table of child records
-	childLoadedTab, inMap := loadedRecordTab[` + "`" + `{{ .PointsFrom.Info.PgName }}` + "`" + `]
-	if !inMap {
-		return p.client.errorConverter(fmt.Errorf("internal pggen error: table not pre-loaded"))
-	}
-	childIDToRecord := childLoadedTab.(map[{{ .PointsFrom.Info.PkeyCol.TypeInfo.Name }}]*{{ .PointsFrom.Info.GoName }})
-
-	// lookup the table of parent records
-	var parentIDToRecord map[{{ .PointsTo.Info.PkeyCol.TypeInfo.Name }}]*{{ .PointsTo.Info.GoName }}
-	parentLoadedTab, inMap := loadedRecordTab[` + "`" + `{{ .PointsTo.Info.PgName }}` + "`" + `]
-	if inMap {
-		parentIDToRecord = parentLoadedTab.(map[{{ .PointsTo.Info.PkeyCol.TypeInfo.Name }}]*{{ .PointsTo.Info.GoName }})
-	} else {
-		parentIDToRecord = map[{{ .PointsTo.Info.PkeyCol.TypeInfo.Name }}]*{{ .PointsTo.Info.GoName }}{}
-	}
-
-	// partition the parents into those records which we have already loaded and those
-	// which still need to be fetched from the db.
-	ids := make([]{{ .PointsToField.TypeInfo.Name }}, 0, len(childIDToRecord))
-	for _, rec := range childIDToRecord {
-		{{- if .PointsFromField.Nullable }}
-		if rec.{{ .PointsFromField.GoName }} == nil {
-			continue
-		}
-		parentID := *rec.{{ .PointsFromField.GoName }}
-		{{- else }}
-		parentID := rec.{{ .PointsFromField.GoName }}
-		{{- end }}
-
-		parentRec, inMap := parentIDToRecord[parentID]
-		if inMap {
-			// already loaded, no need to hit the DB
-			rec.{{ .GoPointsToFieldName }} = parentRec
-		} else {
-			ids = append(ids, parentID)
-		}
-	}
-
-	// build a table mapping parent ids to lists of children which hold references to them
-	parentIDToChildren := map[{{ .PointsTo.Info.PkeyCol.TypeInfo.Name }}][]*{{ .PointsFrom.Info.GoName }}{}
-	for _, rec := range childIDToRecord {
-		{{- if .PointsFromField.Nullable }}
-		if rec.{{ .PointsFromField.GoName }} == nil {
-			continue
-		}
-		parentID := *rec.{{ .PointsFromField.GoName }}
-		{{- else }}
-		parentID := rec.{{ .PointsFromField.GoName }}
-		{{- end }}
-
-		childSlice, inMap := parentIDToChildren[parentID]
-		if inMap {
-			childSlice = append(childSlice, rec)
-			parentIDToChildren[parentID] = childSlice
-		} else {
-			parentIDToChildren[parentID] = []*{{ .PointsFrom.Info.GoName }}{rec}
-		}
-	}
-
-	// fetch any outstanding parent records
-	if len(ids) > 0 {
-		rows, err := p.queryContext(
-			ctx,
-		` + "`" +
-	`SELECT * FROM {{ .PointsTo.Info.PgName }}
-			WHERE {{ .PointsToField.PgName }} = ANY($1)
-		 {{- if .PointsTo.HasDeletedAtField }} AND "{{ .PointsTo.PgDeletedAtField }}" IS NULL {{- end -}}
-		 ` + "`" + `,
-			pgtypes.Array(ids),
-		)
-		if err != nil {
-			return p.client.errorConverter(err)
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var parentRec {{ .PointsTo.Info.GoName }}
-			err = parentRec.Scan(ctx, p.client, rows)
-			if err != nil {
-				return p.client.errorConverter(fmt.Errorf("scanning parent record: %s", err.Error()))
-			}
-
-			childRecs := parentIDToChildren[parentRec.{{ .PointsTo.Info.PkeyCol.GoName }}]
-			for _, childRec := range childRecs {
-				childRec.{{ .GoPointsToFieldName }} = &parentRec
-			}
-			parentIDToRecord[parentRec.{{ .PointsTo.Info.PkeyCol.GoName }}] = &parentRec
-		}
-	}
-
-	loadedRecordTab[` + "`" + `{{ .PointsTo.Info.PgName }}` + "`" + `] = parentIDToRecord
-
-	return nil
-}
-{{ end }}
 
 `))

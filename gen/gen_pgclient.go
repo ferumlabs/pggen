@@ -39,16 +39,6 @@ type PGClient struct {
 	topLevelDB pggen.DBConn
 
 	errorConverter func(error) error
-
-	// These column indexes are used at run time to enable us to 'SELECT *' against
-	// a table that has the same columns in a different order from the ones that we
-	// saw in the table we used to generate code. This means that you don't have to worry
-	// about migrations merging in a slightly different order than their timestamps have
-	// breaking 'SELECT *'.
-	{{- range .ScanStructNames }}
-	rwlockFor{{ . }} sync.RWMutex
-	colIdxTabFor{{ . }} []int
-	{{- end }}
 }
 
 // bogus usage so we can compile with no tables configured

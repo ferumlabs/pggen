@@ -88,8 +88,6 @@ type DBQueries interface {
 	BulkUpsert{{ .GoName }}(ctx context.Context, values []{{ .GoName }}, constraintNames []string, fieldMask pggen.FieldSet, opts ...pggen.UpsertOpt) ([]{{- if .BoxResults }}*{{- end }}{{ .GoName }}, error)
 	Delete{{ .GoName }}(ctx context.Context, id {{ .PkeyType }}, opts ...pggen.DeleteOpt) error
 	BulkDelete{{ .GoName }}(ctx context.Context, ids []{{ .PkeyType }}, opts ...pggen.DeleteOpt) error
-	{{ .GoName }}FillIncludes(ctx context.Context, rec *{{ .GoName }}, includes *include.Spec, opts ...pggen.IncludeOpt) error
-	{{ .GoName }}BulkFillIncludes(ctx context.Context, recs []*{{ .GoName }}, includes *include.Spec, opts ...pggen.IncludeOpt) error
 	{{ end }}
 
 	//

@@ -67,62 +67,18 @@ type {{ .GoName }} struct {
 	{{ .GoPointsToFieldName }} *{{ .PointsTo.Info.GoName }}
 	{{- end}}
 }
-func (r *{{ .GoName }}) Scan(ctx context.Context, client *PGClient, rs *sql.Rows) error {
-	client.rwlockFor{{ .GoName }}.RLock()
-	if client.colIdxTabFor{{ .GoName }} == nil {
-		client.rwlockFor{{ .GoName }}.RUnlock() // release the lock to allow the write lock to be aquired
-		err := client.fillColPosTab(
-			ctx,
-			genTimeColIdxTabFor{{ .GoName }},
-			&client.rwlockFor{{ .GoName }},
-			rs,
-			&client.colIdxTabFor{{ .GoName }},
-		)
-		if err != nil {
-			return err
-		}
-		client.rwlockFor{{ .GoName }}.RLock() // get the lock back for the rest of the routine
-	}
-
+func (r *{{ .GoName }}) Scan(rs *sql.Rows) error {
+	// We assume that the columns coming in are ordered in the same way as defined in genTimeColIdxTabFor{{ .GoName }}.
 	var nullableTgts nullableScanTgtsFor{{ .GoName }}
 
-	scanTgts := make([]interface{}, len(client.colIdxTabFor{{ .GoName }}))
-	for runIdx, genIdx := range client.colIdxTabFor{{ .GoName }} {
-		if genIdx == -1 {
-			scanTgts[runIdx] = &pggenSinkScanner{}
-		} else {
-			scanTgts[runIdx] = scannerTabFor{{ .GoName }}[genIdx](r, &nullableTgts)
-		}
+	scanTgts := make([]interface{}, len(genTimeColIdxTabFor{{ .GoName }}))
+	for _, idx := range genTimeColIdxTabFor{{ .GoName }} {
+		scanTgts[idx] = scannerTabFor{{ .GoName }}[idx](r, &nullableTgts)
 	}
-	client.rwlockFor{{ .GoName }}.RUnlock() // we are now done referencing the idx tab in the happy path
 
 	err := rs.Scan(scanTgts...)
 	if err != nil {
-		// The database schema may have been changed out from under us, let's
-		// check to see if we just need to update our column index tables and retry.
-		colNames, colsErr := rs.Columns()
-		if colsErr != nil {
-			return fmt.Errorf("pggen: checking column names: %s", colsErr.Error())
-		}
-		client.rwlockFor{{ .GoName }}.RLock()
-		if len(client.colIdxTabFor{{ .GoName }}) != len(colNames) {
-			client.rwlockFor{{ .GoName }}.RUnlock() // release the lock to allow the write lock to be aquired
-			err = client.fillColPosTab(
-				ctx,
-				genTimeColIdxTabFor{{ .GoName }},
-				&client.rwlockFor{{ .GoName }},
-				rs,
-				&client.colIdxTabFor{{ .GoName }},
-			)
-			if err != nil {
-				return err
-			}
-
-			return r.Scan(ctx, client, rs)
-		} else {
-			client.rwlockFor{{ .GoName }}.RUnlock()
-			return err
-		}
+		return err
 	}
 
 	{{- range .Meta.Info.Cols }}
