@@ -10,9 +10,16 @@ import (
 	"github.com/ferumlabs/pggen/gen/internal/config"
 )
 
+type TableColumn struct {
+	Table string
+	Col   string
+}
+
 type Resolver struct {
 	// A table mapping postgres primitive types to go types.
 	pgType2GoType map[string]*Info
+	// A table mapping table column names to go types overrides.
+	colName2GoTypeOverride map[TableColumn]*Info
 	// register the given import string with an import list
 	registerImport func(string)
 	// The clearing house for types that we emit. They all go here
@@ -26,10 +33,11 @@ type Resolver struct {
 
 func NewResolver(db *sql.DB, registerImport func(string)) *Resolver {
 	return &Resolver{
-		pgType2GoType:  map[string]*Info{},
-		registerImport: registerImport,
-		types:          newSet(),
-		db:             db,
+		pgType2GoType:          map[string]*Info{},
+		colName2GoTypeOverride: map[TableColumn]*Info{},
+		registerImport:         registerImport,
+		types:                  newSet(),
+		db:                     db,
 	}
 }
 
@@ -38,7 +46,13 @@ func NewResolver(db *sql.DB, registerImport func(string)) *Resolver {
 //
 // This method _must_ be called before any other methods are called.
 func (r *Resolver) Resolve(conf *config.DbConfig) error {
-	return r.initTypeTable(conf.TypeOverrides)
+	colOverrides := make(map[TableColumn]config.ColTypeOverride)
+	for _, table := range conf.Tables {
+		for colName, override := range table.GoColTypeOverrides {
+			colOverrides[TableColumn{table.Name, colName}] = override
+		}
+	}
+	return r.initTypeTable(conf.TypeOverrides, colOverrides)
 }
 
 // emit all the types we have build up into the given Writer
@@ -133,7 +147,17 @@ func (r *Resolver) TypeInfoOf(pgTypeName string) (*Info, error) {
 	return r.primTypeInfoOf(pgTypeName)
 }
 
-func (r *Resolver) initTypeTable(overrides []config.TypeOverride) (err error) {
+func (r *Resolver) OverrideTypeInfoOfCol(tableCol TableColumn) (*Info, error) {
+	info, ok := r.colName2GoTypeOverride[tableCol]
+	if !ok {
+		return nil, fmt.Errorf("unable to find type override for column '%s.%s'", tableCol.Table, tableCol.Col)
+	}
+	return info, nil
+}
+
+func (r *Resolver) initTypeTable(overrides []config.TypeOverride, colOverrides map[TableColumn]config.ColTypeOverride) (
+	err error) {
+
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("while applying type overrides: %s", err.Error())
@@ -150,58 +174,75 @@ func (r *Resolver) initTypeTable(overrides []config.TypeOverride) (err error) {
 		if len(override.PgTypeName) == 0 {
 			return fmt.Errorf("type overrides must include a postgres type")
 		}
-		if len(override.TypeName) == 0 && len(override.NullableTypeName) == 0 {
-			return fmt.Errorf(
-				"type override must override the type or the nullable type")
+		info, err := r.createInfoFromOverride(override.ColTypeOverride)
+		if err != nil {
+			return err
 		}
-		if len(override.Pkg) == 0 && !primitveGoTypes[override.TypeName] {
-			return fmt.Errorf(
-				"type override must include a package unless the type is a primitive")
-		}
+		r.pgType2GoType[override.PgTypeName] = info
+	}
 
-		if len(override.Pkg) > 0 {
-			r.registerImport(override.Pkg)
+	for tableCol, override := range colOverrides {
+		info, err := r.createInfoFromOverride(override)
+		if err != nil {
+			return err
 		}
-		if len(override.NullPkg) > 0 {
-			r.registerImport(override.NullPkg)
-		}
-
-		convertFunc := identityConvert
-		if override.NullableToBoxed != "" {
-			tmpl, err := template.New("nullable_to_boxed_" + override.TypeName).
-				Parse(override.NullableToBoxed)
-			if err != nil {
-				return fmt.Errorf(
-					"bad 'nullable_to_boxed' template for '%s': %s",
-					override.TypeName,
-					err.Error(),
-				)
-			}
-			convertFunc = convertUserTmpl(tmpl)
-		}
-
-		if len(override.TypeName) == 0 ||
-			len(override.NullableTypeName) == 0 {
-			return fmt.Errorf(
-				"`type_name` and `nullable_type_name` must both be " +
-					"provided for a type that pggen does not have default " +
-					"values for.")
-		}
-		r.pgType2GoType[override.PgTypeName] = &Info{
-			Name:            override.TypeName,
-			Pkg:             override.Pkg,
-			NullName:        "*" + override.TypeName,
-			ScanNullName:    override.NullableTypeName,
-			NullConvertFunc: convertFunc,
-			NullPkg:         override.NullPkg,
-			SqlReceiver:     refWrap,
-			NullSqlReceiver: refWrap,
-			SqlArgument:     idWrap,
-			NullSqlArgument: idWrap,
-		}
+		r.colName2GoTypeOverride[tableCol] = info
 	}
 
 	return nil
+}
+
+func (r *Resolver) createInfoFromOverride(override config.ColTypeOverride) (*Info, error) {
+	if len(override.TypeName) == 0 && len(override.NullableTypeName) == 0 {
+		return nil, fmt.Errorf(
+			"type override must override the type or the nullable type")
+	}
+	if len(override.Pkg) == 0 && !primitveGoTypes[override.TypeName] {
+		return nil, fmt.Errorf(
+			"type override must include a package unless the type is a primitive")
+	}
+
+	if len(override.Pkg) > 0 {
+		r.registerImport(override.Pkg)
+	}
+	if len(override.NullPkg) > 0 {
+		r.registerImport(override.NullPkg)
+	}
+
+	convertFunc := identityConvert
+	if override.NullableToBoxed != "" {
+		tmpl, err := template.New("nullable_to_boxed_" + override.TypeName).
+			Parse(override.NullableToBoxed)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"bad 'nullable_to_boxed' template for '%s': %s",
+				override.TypeName,
+				err.Error(),
+			)
+		}
+		convertFunc = convertUserTmpl(tmpl)
+	}
+
+	if len(override.TypeName) == 0 ||
+		len(override.NullableTypeName) == 0 {
+		return nil, fmt.Errorf(
+			"`type_name` and `nullable_type_name` must both be " +
+				"provided for a type that pggen does not have default " +
+				"values for.")
+	}
+
+	return &Info{
+		Name:            override.TypeName,
+		Pkg:             override.Pkg,
+		NullName:        "*" + override.TypeName,
+		ScanNullName:    override.NullableTypeName,
+		NullConvertFunc: convertFunc,
+		NullPkg:         override.NullPkg,
+		SqlReceiver:     refWrap,
+		NullSqlReceiver: refWrap,
+		SqlArgument:     idWrap,
+		NullSqlArgument: idWrap,
+	}, nil
 }
 
 func (r *Resolver) primTypeInfoOf(pgTypeName string) (*Info, error) {
@@ -379,7 +420,7 @@ var intervalGoTypeInfo Info = Info{
 	Pkg:             `"time"`,
 	Name:            "time.Duration",
 	NullName:        "*time.Duration",
-	ScanNullName:    "pggenNullTime",
+	ScanNullName:    "pggenNullDuration",
 	ScanNullPkg:     "",
 	NullConvertFunc: convertCall("convertNullDuration"),
 	SqlReceiver:     refWrap,

@@ -12,11 +12,12 @@ import (
 // genInterfaces emits the DBQueries interface shared between the generated PGClient
 // and the generated TxPGClient. This allows user code to be written in such a way to
 func (g *Generator) genInterfaces(into io.Writer, conf *config.DbConfig) error {
-	g.log.Infof("	generating DBQueries interface\n")
+	g.log.Infof("\tgenerating DBQueries interface\n")
 
 	var genCtx ifaceGenCtx
 
 	// populate tables
+	g.log.Infof("\t\tpopulating tables\n")
 	genCtx.Tables = make([]tableIfaceGenCtx, 0, len(conf.Tables))
 	for _, tc := range conf.Tables {
 		tableInfo, ok := g.metaResolver.TableMeta(tc.Name)
@@ -32,6 +33,7 @@ func (g *Generator) genInterfaces(into io.Writer, conf *config.DbConfig) error {
 	}
 
 	// poplulate queries
+	g.log.Infof("\t\tpopulating queries\n")
 	genCtx.Queries = make([]meta.QueryMeta, 0, len(conf.Queries))
 	for i := range conf.Queries {
 		meta, err := g.metaResolver.QueryMeta(&conf.Queries[i], true /* inferArgTypes */)
@@ -42,6 +44,7 @@ func (g *Generator) genInterfaces(into io.Writer, conf *config.DbConfig) error {
 	}
 
 	// populate the statement gen ctx
+	g.log.Infof("\t\tpopulating statements\n")
 	genCtx.Stmts = make([]meta.StmtMeta, 0, len(conf.Stmts))
 	for i := range conf.Stmts {
 		meta, err := g.metaResolver.StmtMeta(&conf.Stmts[i])
@@ -76,7 +79,7 @@ type DBQueries interface {
 
 	{{ range .Tables }}
 	// {{ .GoName }} methods
-	Get{{ .GoName }}(ctx context.Context, id {{ .PkeyType }}, opts ...pggen.GetOpt) (*{{ .GoName }}, error)
+	Get{{ .GoName }}(ctx context.Context, id {{ .PkeyType }}, opts ...pggen.GetOpt) ({{- if .BoxResults }}*{{- end }}{{ .GoName }}, error)
 	List{{ .GoName }}(ctx context.Context, ids []{{ .PkeyType }}, opts ...pggen.ListOpt) ([]{{- if .BoxResults }}*{{- end }}{{ .GoName }}, error)
 	Insert{{ .GoName }}(ctx context.Context, value *{{ .GoName }}, opts ...pggen.InsertOpt) ({{- if .BoxResults }}*{{- end }}{{ .GoName }}, error)
 	BulkInsert{{ .GoName }}(ctx context.Context, values []{{ .GoName }}, opts ...pggen.InsertOpt) ([]{{- if .BoxResults }}*{{- end }}{{ .GoName }}, error)

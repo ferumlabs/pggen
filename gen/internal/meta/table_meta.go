@@ -660,6 +660,7 @@ func (tr *tableResolver) tableInfo(table *config.TableConfig) (PgTableInfo, erro
 		if err != nil {
 			return PgTableInfo{}, err
 		}
+
 		typeInfo, err := tr.typeInfoOfCol(table, col.PgName, col.PgType)
 		if err != nil {
 			return PgTableInfo{}, fmt.Errorf("column '%s': %s", col.PgName, err.Error())
@@ -706,6 +707,10 @@ func (tr *tableResolver) tableInfo(table *config.TableConfig) (PgTableInfo, erro
 }
 
 func (tr *tableResolver) typeInfoOfCol(conf *config.TableConfig, colName string, colType string) (*types.Info, error) {
+	if _, ok := conf.GoColTypeOverrides[colName]; ok {
+		return tr.typeResolver.OverrideTypeInfoOfCol(types.TableColumn{Table: conf.Name, Col: colName})
+	}
+
 	var jsonOverride *config.JsonType
 	for i, jsonType := range conf.JsonTypes {
 		if jsonType.ColumnName == colName {

@@ -89,36 +89,36 @@ func (p *PGClient) Get{{ .GoName }}(
 	ctx context.Context,
 	id {{ .PkeyCol.TypeInfo.Name }},
 	opts ...pggen.GetOpt,
-) (*{{ .GoName }}, error) {
+) ({{- if .Meta.Config.BoxResults }}*{{- end }}{{ .GoName }}, error) {
 	return p.impl.get{{ .GoName }}(ctx, id)
 }
 func (tx *TxPGClient) Get{{ .GoName }}(
 	ctx context.Context,
 	id {{ .PkeyCol.TypeInfo.Name }},
 	opts ...pggen.GetOpt,
-) (*{{ .GoName }}, error) {
+) ({{- if .Meta.Config.BoxResults }}*{{- end }}{{ .GoName }}, error) {
 	return tx.impl.get{{ .GoName }}(ctx, id)
 }
 func (conn *ConnPGClient) Get{{ .GoName }}(
 	ctx context.Context,
 	id {{ .PkeyCol.TypeInfo.Name }},
 	opts ...pggen.GetOpt,
-) (*{{ .GoName }}, error) {
+) ({{- if .Meta.Config.BoxResults }}*{{- end }}{{ .GoName }}, error) {
 	return conn.impl.get{{ .GoName }}(ctx, id)
 }
 func (p *pgClientImpl) get{{ .GoName }}(
 	ctx context.Context,
 	id {{ .PkeyCol.TypeInfo.Name }},
 	opts ...pggen.GetOpt,
-) (*{{ .GoName }}, error) {
+) ({{- if .Meta.Config.BoxResults }}*{{- end }}{{ .GoName }}, error) {
 	values, err := p.list{{ .GoName }}(ctx, []{{ .PkeyCol.TypeInfo.Name }}{id}, true /* isGet */)
 	if err != nil {
-		return nil, err
+		return {{ if .Meta.Config.BoxResults }}nil{{- else }}{{ .GoName }}{}{{- end }}, err
 	}
 
 	// List{{ .GoName }} always returns the same number of records as were
 	// requested, so this is safe.
-	return {{ if (not .Meta.Config.BoxResults) }}&{{- end }}values[0], err
+	return {{ if .Meta.Config.BoxResults }}&{{- end }}values[0], err
 }
 
 func (p *PGClient) List{{ .GoName }}(

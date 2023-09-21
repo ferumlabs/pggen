@@ -249,7 +249,6 @@ import (
 	if err != nil {
 		return err
 	}
-
 	return utils.WriteGoFile(g.config.OutputFileName, []byte(out.String()))
 }
 

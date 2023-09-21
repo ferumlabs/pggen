@@ -24,6 +24,16 @@ func WriteGoFile(path string, rawSrc []byte) error {
 	} else {
 		src, err = format.Source(rawSrc)
 		if err != nil {
+			debugOutFile, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+			if err != nil {
+				return err
+			}
+			defer debugOutFile.Close()
+			err = WriteCompletely(debugOutFile, rawSrc)
+			if err != nil {
+				return err
+			}
+
 			return fmt.Errorf("internal pggen error: %s", err.Error())
 		}
 	}

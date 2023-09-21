@@ -139,8 +139,8 @@ type TableConfig struct {
 	// If true, queries that return sliced results will return a slice of pointers.
 	// Otherwise, it will be a slice of struct values.
 	BoxResults bool `toml:"box_results"`
-	// The specified TEXT fields will be generated as enums in go code only.
-	GoEnumFields map[string][]string
+	// The specified fields will be generated with the specified type in go code only.
+	GoColTypeOverrides map[string]ColTypeOverride `toml:"go_col_type_overrides"`
 }
 
 // An explicitly configured foreign key relationship which can be attached
@@ -182,6 +182,10 @@ type JsonType struct {
 type TypeOverride struct {
 	// The name of the type in postgres
 	PgTypeName string `toml:"postgres_type_name"`
+	ColTypeOverride
+}
+
+type ColTypeOverride struct {
 	// The name of the package in which the type appears as it would
 	// appear in an import list, including quotes. The package name
 	// may include an alias just like an import might.
@@ -249,6 +253,20 @@ func (c *DbConfig) Validate() error {
 						jsonType.ColumnName,
 						err.Error(),
 					)
+				}
+			}
+		}
+		for colName, override := range table.GoColTypeOverrides {
+			if len(override.Pkg) > 0 {
+				err := names.ValidateImportPath(override.Pkg)
+				if err != nil {
+					return fmt.Errorf("col override for '%s': %s", colName, err.Error())
+				}
+			}
+			if len(override.NullPkg) > 0 {
+				err := names.ValidateImportPath(override.NullPkg)
+				if err != nil {
+					return fmt.Errorf("col override for '%s': %s", colName, err.Error())
 				}
 			}
 		}
