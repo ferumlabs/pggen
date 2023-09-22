@@ -94,7 +94,7 @@ func (r *{{ .GoName }}) Scan(rs *sql.Rows) error {
 
 type nullableScanTgtsFor{{ .GoName }} struct {
 	{{- range .Meta.Info.Cols }}
-	{{- if (or .Nullable (eq .TypeInfo.Name "time.Time")) }}
+	{{- if (or (or .Nullable (eq .TypeInfo.Name "time.Time")) (eq .TypeInfo.Name "time.Duration")) }}
 	scan{{ .GoName }} {{ .TypeInfo.ScanNullName }}
 	{{- end }}
 	{{- end }}
@@ -108,7 +108,7 @@ var scannerTabFor{{ .GoName }} = [...]func(*{{ .GoName }}, *nullableScanTgtsFor{
 		r *{{ $.GoName }},
 		nullableTgts *nullableScanTgtsFor{{ $.GoName }},
 	) interface{} {
-		{{- if (or .Nullable (eq .TypeInfo.Name "time.Time")) }}
+		{{- if (or (or .Nullable (eq .TypeInfo.Name "time.Time")) (eq .TypeInfo.Name "time.Duration")) }}
 		return {{ call .TypeInfo.NullSqlReceiver (printf "nullableTgts.scan%s" .GoName) }}
 		{{- else }}
 		return {{ call .TypeInfo.SqlReceiver (printf "r.%s" .GoName) }}

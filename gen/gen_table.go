@@ -357,7 +357,7 @@ func (p *pgClientImpl) bulkInsert{{ .GoName }}(
 		}
 		{{- end }}
 		{{- else }}
-		if opt.UsePkey && !defaultFields.Test({{ $.GoName }}{{ .GoName }}FieldIndex) {
+		if !defaultFields.Test({{ $.GoName }}{{ .GoName }}FieldIndex) {
 			{{- if .Nullable }}
 			args = append(args, {{ call .TypeInfo.NullSqlArgument (printf "v.%s" .GoName) }})
 			{{- else }}
@@ -373,7 +373,7 @@ func (p *pgClientImpl) bulkInsert{{ .GoName }}(
 		fieldsFor{{ .GoName }},
 		len(values),
 		"{{ .PkeyCol.PgName }}",
-		opt.UsePkey,
+		true,
 		defaultFields,
 	)
 
@@ -718,13 +718,13 @@ func (p *pgClientImpl) bulkUpsert{{ .GoName }}(
 		fieldsFor{{ .GoName }},
 		len(values),
 		` + "`" + `{{ .PkeyCol.PgName }}` + "`" + `,
-		options.UsePkey,
+		true,
 		defaultFields,
 	)
 
 	setBits := fieldMask.CountSetBits()
 	hasConflictAction := setBits > 1 ||
-		(setBits == 1 && fieldMask.Test({{ .GoName }}{{ .PkeyCol.GoName }}FieldIndex) && options.UsePkey) ||
+		(setBits == 1 && fieldMask.Test({{ .GoName }}{{ .PkeyCol.GoName }}FieldIndex)) ||
 		(setBits == 1 && !fieldMask.Test({{ .GoName }}{{ .PkeyCol.GoName }}FieldIndex))
 
 	if hasConflictAction {
@@ -734,10 +734,8 @@ func (p *pgClientImpl) bulkUpsert{{ .GoName }}(
 
 		updateCols := make([]string, 0, {{ len .Meta.Info.Cols }})
 		updateExprs := make([]string, 0, {{ len .Meta.Info.Cols }})
-		if options.UsePkey {
-			updateCols = append(updateCols, ` + "`" + `{{ .PkeyCol.PgName }}` + "`" + `)
-			updateExprs = append(updateExprs, ` + "`" + `excluded.{{ .PkeyCol.PgName }}` + "`" + `)
-		}
+		updateCols = append(updateCols, ` + "`" + `{{ .PkeyCol.PgName }}` + "`" + `)
+		updateExprs = append(updateExprs, ` + "`" + `excluded.{{ .PkeyCol.PgName }}` + "`" + `)
 		{{- range $i, $col := .Meta.Info.Cols }}
 		{{- if (not (eq $i $.PkeyColIdx)) }}
 		if fieldMask.Test({{ $.GoName }}{{ $col.GoName }}FieldIndex) {
@@ -771,7 +769,7 @@ func (p *pgClientImpl) bulkUpsert{{ .GoName }}(
 	for _, v := range values {
 		{{- range $i, $col := .Meta.Info.Cols }}
 		{{- if (eq $i $.PkeyColIdx) }}
-		if options.UsePkey && !defaultFields.Test({{ $.GoName }}{{ .GoName }}FieldIndex) {
+		if !defaultFields.Test({{ $.GoName }}{{ .GoName }}FieldIndex) {
 			{{- if .Nullable }}
 			args = append(args, {{ call .TypeInfo.NullSqlArgument (printf "v.%s" .GoName) }})
 			{{- else }}
