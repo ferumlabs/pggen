@@ -211,6 +211,10 @@ func populateFieldTags(meta *TableMeta) error {
 			tags.WriteString(` gorm:"is_primary"`)
 		}
 
+		tags.WriteString(` json:"`)
+		tags.WriteString(col.PgName)
+		tags.WriteRune('"')
+
 		meta.Info.Cols[i].Tags = mergeTags(tags.String(), colToAnn[col.PgName])
 	}
 
