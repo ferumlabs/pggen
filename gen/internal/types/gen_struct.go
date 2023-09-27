@@ -122,4 +122,41 @@ var genTimeColIdxTabFor{{ .GoName }} map[string]int = map[string]int{
 	` + "`" + `{{ $col.PgName }}` + "`" + `: {{ $i }},
 	{{- end }}
 }
+
+func QueryAndScan{{ .GoName }}(
+	ctx context.Context,
+	h pggen.DBHandle,
+	query string,
+	args ...interface{},
+) (ret []{{- if .Meta.Config.BoxResults }}*{{- end }}{{ .GoName }}, err error) {
+	rows, err := h.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err == nil {
+			err = rows.Close()
+			if err != nil {
+				ret = nil
+			}
+		} else {
+			rowErr := rows.Close()
+			if rowErr != nil {
+				err = fmt.Errorf("%s AND %s", err.Error(), rowErr.Error())
+			}
+		}
+	}()
+
+	ret = make([]{{- if .Meta.Config.BoxResults }}*{{- end }}{{ .GoName }}, 0)
+	for rows.Next() {
+		var value {{ .GoName }}
+		err = value.Scan(rows)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, {{- if .Meta.Config.BoxResults }}&{{- end }}value)
+	}
+
+	return ret, nil
+}
 `))
