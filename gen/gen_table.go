@@ -26,6 +26,7 @@ func (g *Generator) genTables(into io.Writer, tables []config.TableConfig) error
 	g.imports[`"github.com/ferumlabs/pggen/include"`] = true
 	g.imports[`"github.com/ferumlabs/pggen/unstable"`] = true
 	g.imports[`"github.com/ferumlabs/pggen"`] = true
+	g.imports[`"ferum/utils/batcher"`] = true
 
 	for i := range tables {
 		err := g.genTable(into, &tables[i])
@@ -147,11 +148,33 @@ func (p *pgClientImpl) list{{ .GoName }}(
 	ids []{{ .PkeyCol.TypeInfo.Name }},
 	isGet bool,
 	opts ...pggen.ListOpt,
-) (ret []{{- if .Meta.Config.BoxResults }}*{{- end }}{{ .GoName }}, err error) {
+) ([]{{- if .Meta.Config.BoxResults }}*{{- end }}{{ .GoName }}, error) {
 	opt := pggen.ListOptions{}
 	for _, o := range opts {
 		o(&opt)
 	}
+	if len(ids) == 0 {
+		return []{{- if .Meta.Config.BoxResults }}*{{- end }}{{ .GoName }}{}, nil
+	}
+	
+	ret := make([]{{- if .Meta.Config.BoxResults }}*{{- end }}{{ .GoName }}, 0, len(ids))
+	batches := batcher.Batch(ids, BatchSize)
+	for _, batch := range batches {
+		batchRet, err := p.listBatch{{ .GoName }}(ctx, batch, isGet, opt)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, batchRet...) 
+	}
+
+	return ret, nil 
+}
+func (p *pgClientImpl) listBatch{{ .GoName }}(
+	ctx context.Context,
+	ids []{{ .PkeyCol.TypeInfo.Name }},
+	isGet bool,
+	opt pggen.ListOptions,
+) ([]{{- if .Meta.Config.BoxResults }}*{{- end }}{{ .GoName }}, error) {
 	if len(ids) == 0 {
 		return []{{- if .Meta.Config.BoxResults }}*{{- end }}{{ .GoName }}{}, nil
 	}
@@ -163,46 +186,33 @@ func (p *pgClientImpl) list{{ .GoName }}(
 		pgtypes.Array(ids),
 	)
 	if err != nil {
-		return nil, p.client.errorConverter(err)
+		return nil, err
 	}
-	defer func() {
-		if err == nil {
-			err = rows.Close()
-			if err != nil {
-				ret = nil
-				err = p.client.errorConverter(err)
-			}
-		} else {
-			rowErr := rows.Close()
-			if rowErr != nil {
-				err = p.client.errorConverter(fmt.Errorf("%s AND %s", err.Error(), rowErr.Error()))
-			}
-		}
-	}()
+	defer rows.Close()
 
-	ret = make([]{{- if .Meta.Config.BoxResults }}*{{- end }}{{ .GoName }}, 0, len(ids))
+	ret := make([]{{- if .Meta.Config.BoxResults }}*{{- end }}{{ .GoName }}, 0, len(ids))
 	for rows.Next() {
 		var value {{ .GoName }}
 		err = value.Scan(rows)
 		if err != nil {
-			return nil, p.client.errorConverter(err)
+			return nil, err
 		}
 		ret = append(ret, {{- if .Meta.Config.BoxResults }}&{{- end }}value)
 	}
 
 	if len(ret) != len(ids) {
 		if isGet {
-			return nil, p.client.errorConverter(&unstable.NotFoundError{
+			return nil, &unstable.NotFoundError{
 				Msg: "Get{{ .GoName }}: record not found",
-			})
+			}
 		} else if !opt.SucceedOnPartialResults {
-			return nil, p.client.errorConverter(&unstable.NotFoundError{
+			return nil, &unstable.NotFoundError{
 				Msg: fmt.Sprintf(
 					"List{{ .GoName }}: asked for %d records, found %d",
 					len(ids),
 					len(ret),
 				),
-			})
+			}
 		}
 	}
 
@@ -246,11 +256,11 @@ func (p *pgClientImpl) insert{{ .GoName }}(
 	var rets []{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}
 	rets, err = p.bulkInsert{{ .GoName }}(ctx, []{{ .GoName }}{value}, opts...)
 	if err != nil {
-		return ret, p.client.errorConverter(err)
+		return ret, err
 	}
 
 	if len(rets) != 1 {
-		return ret, p.client.errorConverter(fmt.Errorf("inserting a {{ .GoName }}: %d rows (expected 1)", len(rets)))
+		return ret, fmt.Errorf("inserting a {{ .GoName }}: %d rows (expected 1)", len(rets))
 	}
 
 	ret = rets[0]
@@ -298,6 +308,28 @@ func (p *pgClientImpl) bulkInsert{{ .GoName }}(
 	opt := pggen.InsertOptions{}
 	for _, o := range opts {
 		o(&opt)
+	}
+	
+	rets := make([]{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, 0, len(values))
+
+	batches := batcher.Batch(values, BatchSize)
+	for _, batch := range batches {
+		batchRet, err := p.bulkInsertBatch{{ .GoName }}(ctx, batch, opt)
+		if err != nil {
+			return nil, err
+		}
+		rets = append(rets, batchRet...)
+	}
+
+	return rets, nil
+}
+func (p *pgClientImpl) bulkInsertBatch{{ .GoName }}(
+	ctx context.Context,
+	values []{{ .GoName }},
+	opt pggen.InsertOptions,
+) ([]{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, error) {
+	if len(values) == 0 {
+		return []{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}{}, nil
 	}
 
 	{{- if (or .Meta.HasCreatedAtField .Meta.HasUpdatedAtField) }}
@@ -379,7 +411,7 @@ func (p *pgClientImpl) bulkInsert{{ .GoName }}(
 
 	rows, err := p.queryContext(ctx, bulkInsertQuery, args...)
 	if err != nil {
-		return nil, p.client.errorConverter(err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -388,7 +420,7 @@ func (p *pgClientImpl) bulkInsert{{ .GoName }}(
 		var ret {{ .GoName }}
 		err = ret.Scan(rows)
 		if err != nil {
-			return nil, p.client.errorConverter(err)
+			return nil, err
 		}
 		rets = append(rets, {{ if .Meta.Config.BoxResults }}&{{ end }}ret)
 	}
@@ -486,7 +518,7 @@ func (p *pgClientImpl) update{{ .GoName }}(
 	}	
 
 	if !fieldMask.Test({{ .GoName }}{{ .PkeyCol.GoName }}FieldIndex) {
-		return {{ if .Meta.Config.BoxResults }}&{{ end }}ret, p.client.errorConverter(fmt.Errorf(` + "`" + `primary key required for updates to '{{ .PgName }}'` + "`" + `))
+		return {{ if .Meta.Config.BoxResults }}&{{ end }}ret, fmt.Errorf(` + "`" + `primary key required for updates to '{{ .PgName }}'` + "`" + `)
 	}
 
 	{{- if .Meta.HasUpdatedAtField }}
@@ -530,14 +562,14 @@ func (p *pgClientImpl) update{{ .GoName }}(
 
 	rows, err := p.db.QueryContext(ctx, updateStmt, args...)
 	if err != nil {
-		return {{ if .Meta.Config.BoxResults }}&{{ end }}ret, p.client.errorConverter(err)
+		return {{ if .Meta.Config.BoxResults }}&{{ end }}ret, err
 	}
 	defer rows.Close()
 	rows.Next()
 	
 	err = ret.Scan(rows)
 	if err != nil {
-		return {{ if .Meta.Config.BoxResults }}&{{ end }}ret, p.client.errorConverter(err)
+		return {{ if .Meta.Config.BoxResults }}&{{ end }}ret, err
 	}
 
 	return {{ if .Meta.Config.BoxResults }}&{{ end }}ret, nil
@@ -673,6 +705,28 @@ func (p *pgClientImpl) bulkUpsert{{ .GoName }}(
 		constraintNames = []string{` + "`" + `{{ .PkeyCol.PgName }}` + "`" + `}
 	}
 
+	vals := make([]{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, 0, len(values))
+	batches := batcher.Batch(values, BatchSize)
+	for _, batch := range batches {
+		batchVals, err := p.bulkUpsertBatch{{ .GoName }}(ctx, batch, constraintNames, fieldMask, options)
+		if err != nil {
+			return nil, err
+		}
+		vals = append(vals, batchVals...)
+	}
+	return vals, nil
+}
+func (p *pgClientImpl) bulkUpsertBatch{{ .GoName }}(
+	ctx context.Context,
+	values []{{ .GoName }},
+	constraintNames []string,
+	fieldMask pggen.FieldSet,
+	opt pggen.UpsertOptions,
+) ([]{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}, error) {
+	if len(values) == 0 {
+		return []{{ if .Meta.Config.BoxResults }}*{{ end }}{{ .GoName }}{}, nil
+	}
+
 	{{ if (or .Meta.HasCreatedAtField .Meta.HasUpdatedAtField) }}
 	if !options.DisableTimestamps {
 		now := time.Now()
@@ -710,7 +764,7 @@ func (p *pgClientImpl) bulkUpsert{{ .GoName }}(
 	}
 	{{- end }}
 
-	defaultFields := options.DefaultFields.Intersection(defaultableColsFor{{ .GoName }})
+	defaultFields := opt.DefaultFields.Intersection(defaultableColsFor{{ .GoName }})
 	var stmt strings.Builder
 	genInsertCommon(
 		&stmt,
@@ -792,7 +846,7 @@ func (p *pgClientImpl) bulkUpsert{{ .GoName }}(
 
 	rows, err := p.queryContext(ctx, stmt.String(), args...)
 	if err != nil {
-		return nil, p.client.errorConverter(err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -801,7 +855,7 @@ func (p *pgClientImpl) bulkUpsert{{ .GoName }}(
 		var val {{ .GoName }}
 		err = val.Scan(rows)
 		if err != nil {
-			return nil, p.client.errorConverter(err)
+			return nil, err
 		}
 		vals = append(vals, {{ if .Meta.Config.BoxResults }}&{{ end }}val)
 	}
@@ -866,6 +920,25 @@ func (p *pgClientImpl) bulkDelete{{ .GoName }}(
 		o(&options)
 	}
 
+	batches := batcher.Batch(ids, BatchSize)
+	for _, batch := range batches {
+		err := p.bulkDeleteBatch{{ .GoName }}(ctx, batch, options)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+func (p *pgClientImpl) bulkDeleteBatch{{ .GoName }}(
+	ctx context.Context,
+	ids []{{ .PkeyCol.TypeInfo.Name }},
+	opt pggen.DeleteOptions,
+) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
 	{{- if .Meta.HasDeletedAtField }}
 	{{- if .Meta.DeletedAtHasTimezone }}
 	now := time.Now()
@@ -898,20 +971,20 @@ func (p *pgClientImpl) bulkDelete{{ .GoName }}(
 	)
 	{{- end }}
 	if err != nil {
-		return p.client.errorConverter(err)
+		return err
 	}
 
 	nrows, err := res.RowsAffected()
 	if err != nil {
-		return p.client.errorConverter(err)
+		return err
 	}
 
 	if nrows != int64(len(ids)) {
-		return p.client.errorConverter(fmt.Errorf(
+		return fmt.Errorf(
 			"BulkDelete{{ .GoName }}: %d rows deleted, expected %d",
 			nrows,
 			len(ids),
-		))
+		)
 	}
 
 	return err

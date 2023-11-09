@@ -190,9 +190,9 @@ func (p *pgClientImpl) {{ .ConfigData.Name }}(
 	{{- end }}
 	{{- end }}
 {{- if (not .MultiReturn) }}
-) (ret {{ .ReturnTypeName }}, err error) {
+) ({{ .ReturnTypeName }}, error) {
 {{- else }}
-) (ret *{{ .ReturnTypeName }}, err error) {
+) (*{{ .ReturnTypeName }}, error) {
 {{- end }}
 	{{- if (not .MultiReturn) }}
 	var zero {{ .ReturnTypeName }}
@@ -203,9 +203,8 @@ func (p *pgClientImpl) {{ .ConfigData.Name }}(
 	// we still use QueryConfig rather than QueryRowContext so the scan
 	// impl remains consistant. We don't need to split out a seperate Query
 	// method though.
-	var rows *sql.Rows
 	{{- /* We can't call out to *Query method because this is in the SingleResult block. */}}
-	rows, err = p.queryContext(
+	rows, err := p.queryContext(
 		ctx,
 		` + "`" +
 	`{{ .ConfigData.Body }}` +
@@ -219,47 +218,37 @@ func (p *pgClientImpl) {{ .ConfigData.Name }}(
 		{{- end }}
 	)
 	if err != nil {
-		return zero, p.client.errorConverter(err)
+		return zero, err
 	}
-	defer func() {
-		if err == nil {
-			err = rows.Close()
-			if err != nil {
-				ret = zero
-				err = p.client.errorConverter(err)
-			}
-		} else {
-			rowErr := rows.Close()
-			if rowErr != nil {
-				err = p.client.errorConverter(fmt.Errorf("%s AND %s", err.Error(), rowErr.Error()))
-			}
-		}
-	}()
+	defer rows.Close()
 
 	if !rows.Next() {
-		return zero, p.client.errorConverter(&unstable.NotFoundError{ Msg: "{{ .ConfigData.Name }}: no results" })
+		return zero, &unstable.NotFoundError{ Msg: "{{ .ConfigData.Name }}: no results" }
 	}
 
 	{{- if .MultiReturn }}
-	ret = &{{ .ReturnTypeName }}{}
+	ret := &{{ .ReturnTypeName }}{}
 	err = ret.Scan(ctx, p.client, rows)
+	if err != nil {
+		return zero, err
+	}
 	{{- else }}
 	{{- if (index .ReturnCols 0).Nullable }}
 	var scanTgt {{ (index .ReturnCols 0).TypeInfo.ScanNullName }}
 	err = rows.Scan({{ call (index .ReturnCols 0).TypeInfo.NullSqlReceiver "scanTgt" }})
 	if err != nil {
-		return zero, p.client.errorConverter(err)
+		return zero, err
 	}
-	ret = {{ call (index .ReturnCols 0).TypeInfo.NullConvertFunc "scanTgt" }}
+	ret := {{ call (index .ReturnCols 0).TypeInfo.NullConvertFunc "scanTgt" }}
 	{{- else }}
 	err = rows.Scan({{ call (index .ReturnCols 0).TypeInfo.SqlReceiver "ret" }})
 	if err != nil {
-		return zero, p.client.errorConverter(err)
+		return zero, err
 	}
 	{{- end }}
 	{{- end }}
 
-	return
+	return ret, err
 }
 {{- else }}{{/* if .ConfigData.SingleResult */}}
 {{ .Comment }}
@@ -325,33 +314,19 @@ func (p *pgClientImpl) {{ .ConfigData.Name }}(
 	{{ .GoName }} {{ .TypeInfo.Name }},
 	{{- end }}
 	{{- end }}
-) (ret []{{- if $.ConfigData.BoxResults }}*{{- end }}{{ .ReturnTypeName }}, err error) {
-	ret = []{{- if $.ConfigData.BoxResults }}*{{- end }}{{ .ReturnTypeName }}{}
+) ([]{{- if $.ConfigData.BoxResults }}*{{- end }}{{ .ReturnTypeName }}, error) {
+	ret := []{{- if $.ConfigData.BoxResults }}*{{- end }}{{ .ReturnTypeName }}{}
 
-	var rows *sql.Rows
-	rows, err = p.{{ .ConfigData.Name }}Query(
+	rows, err := p.{{ .ConfigData.Name }}Query(
 		ctx,
 		{{- range .Args}}
 		{{ .GoName }},
 		{{- end}}
 	)
 	if err != nil {
-		return nil, p.client.errorConverter(err)
+		return nil, err
 	}
-	defer func() {
-		if err == nil {
-			err = rows.Close()
-			if err != nil {
-				ret = nil
-				err = p.client.errorConverter(err)
-			}
-		} else {
-			rowErr := rows.Close()
-			if rowErr != nil {
-				err = p.client.errorConverter(fmt.Errorf("%s AND %s", err.Error(), rowErr.Error()))
-			}
-		}
-	}()
+	defer rows.Close()
 
 	for rows.Next() {
 		var row {{ .ReturnTypeName }}
@@ -362,13 +337,13 @@ func (p *pgClientImpl) {{ .ConfigData.Name }}(
 		var scanTgt {{ (index .ReturnCols 0).TypeInfo.ScanNullName }}
 		err = rows.Scan({{ call (index .ReturnCols 0).TypeInfo.NullSqlReceiver "scanTgt" }})
 		if err != nil {
-			return nil, p.client.errorConverter(err)
+			return nil, err
 		}
 		row = {{ call (index .ReturnCols 0).TypeInfo.NullConvertFunc "scanTgt" }}
 		{{- else }}
 		err = rows.Scan({{ call (index .ReturnCols 0).TypeInfo.SqlReceiver "row" }})
 		if err != nil {
-			return nil, p.client.errorConverter(err)
+			return nil, err
 		}
 		{{- end }}
 		{{- end }}
@@ -379,7 +354,7 @@ func (p *pgClientImpl) {{ .ConfigData.Name }}(
 		{{- end }}
 	}
 
-	return
+	return ret, nil
 }
 
 {{ .Comment }}

@@ -32,13 +32,14 @@ func (g *Generator) genPGClient(into io.Writer, conf *config.DbConfig) error {
 
 var pgClientTmpl *template.Template = template.Must(template.New("pgclient-tmpl").Parse(`
 
+// Batch size for bulk operations.
+const BatchSize = 100
+
 // PGClient wraps either a 'sql.DB' or a 'sql.Tx'. All pggen-generated
 // database access methods for this package are attached to it.
 type PGClient struct {
 	impl pgClientImpl
 	topLevelDB pggen.DBConn
-
-	errorConverter func(error) error
 }
 
 // bogus usage so we can compile with no tables configured
@@ -50,12 +51,6 @@ var _ = sync.RWMutex{}
 // If you provide your own wrapper around a '*sql.DB' for logging or
 // custom tracing, you MUST forward all calls to an underlying '*sql.DB'
 // member of your wrapper.
-//
-// If the DBConn passed into NewPGClient implements an ErrorConverter
-// method which returns a func(error) error, the result of calling the
-// ErrorConverter method will be called on every error that the generated
-// code returns right before the error is returned. If ErrorConverter
-// returns nil or is not present, it will default to the identity function.
 func NewPGClient(conn pggen.DBConn) *PGClient {
 	client := PGClient {
 		topLevelDB: conn,
@@ -64,18 +59,6 @@ func NewPGClient(conn pggen.DBConn) *PGClient {
 		db: conn,
 		client: &client,
 	}
-
-	// extract the optional error converter routine
-	ec, ok := conn.(interface {
-		ErrorConverter() func(error) error
-	})
-	if ok {
-		client.errorConverter = ec.ErrorConverter()
-	}
-	if client.errorConverter == nil {
-		client.errorConverter = func(err error) error { return err }
-	}
-
 	return &client
 }
 
@@ -86,7 +69,7 @@ func (p *PGClient) Handle() pggen.DBHandle {
 func (p *PGClient) BeginTx(ctx context.Context, opts *sql.TxOptions) (*TxPGClient, error) {
 	tx, err := p.topLevelDB.BeginTx(ctx, opts)
 	if err != nil {
-		return nil, p.errorConverter(err)
+		return nil, err
 	}
 
 	return &TxPGClient{
@@ -100,7 +83,7 @@ func (p *PGClient) BeginTx(ctx context.Context, opts *sql.TxOptions) (*TxPGClien
 func (p *PGClient) Conn(ctx context.Context) (*ConnPGClient, error) {
 	conn, err := p.topLevelDB.Conn(ctx)
 	if err != nil {
-		return nil, p.errorConverter(err)
+		return nil, err
 	}
 
 	return &ConnPGClient{impl: pgClientImpl{ db: conn, client: p }}, nil
