@@ -825,13 +825,13 @@ func (p *pgClientImpl) bulkUpsertBatch{{ .GoName }}(
 		{{- if (eq $i $.PkeyColIdx) }}
 		if !defaultFields.Test({{ $.GoName }}{{ .GoName }}FieldIndex) {
 			{{- if .Nullable }}
-			err := {{ call $col.TypeInfo.NullableCustomValidator (printf "v.%s" $col.GoName) }}
+			err := {{ call $col.TypeInfo.NullableCustomValidator (printf "v.%s" $col.GoName) $col.TableName $col.PgName }}
 			if err != nil {
 				return nil, err
 			}
 			args = append(args, {{ call $col.TypeInfo.NullSqlArgument (printf "v.%s" $col.GoName) }})
 			{{- else }}
-			if err := {{ call $col.TypeInfo.CustomValidator (printf "v.%s" $col.GoName) }}; err != nil {
+			if err := {{ call $col.TypeInfo.CustomValidator (printf "v.%s" $col.GoName) $col.TableName $col.PgName }}; err != nil {
 				return nil, err
 			}
 			args = append(args, {{ call $col.TypeInfo.SqlArgument (printf "v.%s" $col.GoName) }})
@@ -840,7 +840,7 @@ func (p *pgClientImpl) bulkUpsertBatch{{ .GoName }}(
 		{{- else }}
 		{{- if .Nullable }}
 		if !defaultFields.Test({{ $.GoName }}{{ .GoName }}FieldIndex) {
-			err := {{ call $col.TypeInfo.NullableCustomValidator (printf "v.%s" $col.GoName) }}
+			err := {{ call $col.TypeInfo.NullableCustomValidator (printf "v.%s" $col.GoName) $col.TableName $col.PgName }}
 			if err != nil {
 				return nil, err
 			}
@@ -848,7 +848,7 @@ func (p *pgClientImpl) bulkUpsertBatch{{ .GoName }}(
 		}
 		{{- else }}
 		if !defaultFields.Test({{ $.GoName }}{{ .GoName }}FieldIndex) {
-			if err := {{ call $col.TypeInfo.CustomValidator (printf "v.%s" $col.GoName) }}; err != nil {
+			if err := {{ call $col.TypeInfo.CustomValidator (printf "v.%s" $col.GoName) $col.TableName $col.PgName }}; err != nil {
 				return nil, err
 			}
 			args = append(args, {{ call $col.TypeInfo.SqlArgument (printf "v.%s" $col.GoName) }})

@@ -575,6 +575,8 @@ type PgTableInfo struct {
 // ColMeta contains metadata about postgres table columns such column
 // names, types, nullability, default...
 type ColMeta struct {
+	// Name of table this column belongs to.
+	TableName string
 	// postgres's internal column number for this column
 	ColNum int32
 	// the name of the field in the go struct which corresponds to this column
@@ -670,6 +672,7 @@ func (tr *tableResolver) tableInfo(table *config.TableConfig) (PgTableInfo, erro
 			return PgTableInfo{}, fmt.Errorf("column '%s': %s", col.PgName, err.Error())
 		}
 		col.TypeInfo = *typeInfo
+		col.TableName = table.Name
 		col.GoName = names.PgToGoName(col.PgName)
 		col.IsMutable = slices.Contains(table.MutableFields, col.PgName)
 		cols = append(cols, col)
@@ -782,10 +785,10 @@ func (tr *tableResolver) typeInfoOfCol(conf *config.TableConfig, colName string,
 		SqlArgument:         toConverter,
 		NullSqlArgument:     nullToConverter,
 		IsTimestampWithZone: false,
-		CustomValidator: func(v string) string {
+		CustomValidator: func(_, _, _ string) string {
 			return "error(nil)"
 		},
-		NullableCustomValidator: func(v string) string {
+		NullableCustomValidator: func(_, _, _ string) string {
 			return "error(nil)"
 		},
 	}, nil

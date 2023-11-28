@@ -112,9 +112,9 @@ type Info struct {
 	// templates, only for handling arrays of enums.
 	isEnum bool
 	// Custom validator which validates the application level value.
-	CustomValidator func(string) string
+	CustomValidator func(value string, table string, column string) string
 	// Same as CustomValidator but for the nullable type, if applicable.
-	NullableCustomValidator func(string) string
+	NullableCustomValidator func(value string, table string, column string) string
 }
 
 func (r *Resolver) TypeInfoOf(pgTypeName string) (*Info, error) {
@@ -244,7 +244,7 @@ func (r *Resolver) createInfoFromOverride(override config.ColTypeOverride) (*Inf
 				err.Error(),
 			)
 		}
-		customValidate = convertUserTmpl(tmpl)
+		customValidate = convertValidatorUserTmpl(tmpl)
 	}
 
 	nullableCustomValidate := identityCustomValidate
@@ -258,7 +258,7 @@ func (r *Resolver) createInfoFromOverride(override config.ColTypeOverride) (*Inf
 				err.Error(),
 			)
 		}
-		nullableCustomValidate = convertUserTmpl(tmpl)
+		nullableCustomValidate = convertValidatorUserTmpl(tmpl)
 	}
 
 	if len(override.TypeName) == 0 ||
@@ -349,7 +349,7 @@ func identityConvert(v string) string {
 	return v
 }
 
-func identityCustomValidate(v string) string {
+func identityCustomValidate(_, _, _ string) string {
 	return "error(nil)"
 }
 
@@ -359,6 +359,31 @@ func convertUserTmpl(tmpl *template.Template) func(string) string {
 			Value string
 		}
 		c := tmplCtx{Value: v}
+
+		var out strings.Builder
+		err := tmpl.Execute(&out, c)
+		if err != nil {
+			// This routine will get executed by the code generator template,
+			// so there is no really great way to cleanly report this error.
+			// We'll just have to panic.
+			panic("bad template '" + tmpl.Name() + "': " + err.Error())
+		}
+		return out.String()
+	}
+}
+
+func convertValidatorUserTmpl(tmpl *template.Template) func(string, string, string) string {
+	return func(v, table, col string) string {
+		type tmplCtx struct {
+			Value  string
+			Table  string
+			Column string
+		}
+		c := tmplCtx{
+			Value:  v,
+			Table:  table,
+			Column: col,
+		}
 
 		var out strings.Builder
 		err := tmpl.Execute(&out, c)
