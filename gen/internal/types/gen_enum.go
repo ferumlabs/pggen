@@ -36,9 +36,11 @@ func (r *Resolver) maybeEmitEnumType(
 			SqlReceiver: func(v string) string {
 				return fmt.Sprintf("&%s", v)
 			},
-			SqlArgument:     stringizeWrap,
-			NullSqlArgument: nullStringizeWrap,
-			isEnum:          true,
+			SqlArgument:             stringizeWrap,
+			NullSqlArgument:         nullStringizeWrap,
+			isEnum:                  true,
+			CustomValidator:         identityCustomValidate,
+			NullableCustomValidator: identityCustomValidate,
 		}
 
 		if r.types.probe(typeInfo.Name) {

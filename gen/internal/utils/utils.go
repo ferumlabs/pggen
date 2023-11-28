@@ -31,10 +31,9 @@ func WriteGoFile(path string, rawSrc []byte) error {
 			defer debugOutFile.Close()
 			err = WriteCompletely(debugOutFile, rawSrc)
 			if err != nil {
-				return err
+				return fmt.Errorf("internal pggen error: %s", err.Error())
 			}
-
-			return fmt.Errorf("internal pggen error: %s", err.Error())
+			return nil
 		}
 	}
 

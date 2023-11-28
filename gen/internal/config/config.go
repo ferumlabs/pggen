@@ -222,6 +222,20 @@ type ColTypeOverride struct {
 	// If no template expression is provided, `.Value` will be assumed to be directly
 	// assignable to a boxed version of `type_name`.
 	NullableToBoxed string `toml:"nullable_to_boxed"`
+	// Additional packages needed for the CustomValidator.
+	CustomValidatorPkg string `toml:"custom_validator_pkg"`
+	// Similar to NullableToBoxed but should contain a template to validate a value. Example:
+	// ```
+	// func(value decimal.Decimal) error {
+	//   if value.IsZero() {
+	// 	   return fmt.Errorf("value must be non-zero")
+	//   }
+	//   return nil
+	// }({{ .Value }})
+	// ```
+	CustomValidator string `toml:"custom_validator"`
+	// Same as CustomValidator but for the nullable type.
+	NullableCustomValidator string `toml:"nullable_custom_validator"`
 }
 
 // Give a user provided configuration, runs some santity checks on the provided values

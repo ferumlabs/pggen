@@ -111,6 +111,10 @@ type Info struct {
 	// A flag indicating that this TypeInfo is for an enum. Not for use by
 	// templates, only for handling arrays of enums.
 	isEnum bool
+	// Custom validator which validates the application level value.
+	CustomValidator func(string) string
+	// Same as CustomValidator but for the nullable type, if applicable.
+	NullableCustomValidator func(string) string
 }
 
 func (r *Resolver) TypeInfoOf(pgTypeName string) (*Info, error) {
@@ -136,10 +140,12 @@ func (r *Resolver) TypeInfoOf(pgTypeName string) (*Info, error) {
 				ScanNullName:    "[]" + tyInfo.ScanNullName,
 				NullConvertFunc: arrayConvert(tyInfo.NullConvertFunc, tyInfo.NullName),
 				// arrays need special wrappers
-				SqlReceiver:     arrayRefWrap,
-				NullSqlReceiver: arrayRefWrap,
-				SqlArgument:     sqlArgument,
-				NullSqlArgument: sqlArgument,
+				SqlReceiver:             arrayRefWrap,
+				NullSqlReceiver:         arrayRefWrap,
+				SqlArgument:             sqlArgument,
+				NullSqlArgument:         sqlArgument,
+				CustomValidator:         identityCustomValidate,
+				NullableCustomValidator: identityCustomValidate,
 			}, nil
 		}
 	}
@@ -223,6 +229,38 @@ func (r *Resolver) createInfoFromOverride(override config.ColTypeOverride) (*Inf
 		convertFunc = convertUserTmpl(tmpl)
 	}
 
+	if len(override.CustomValidatorPkg) > 0 {
+		r.registerImport(override.CustomValidatorPkg)
+	}
+
+	customValidate := identityCustomValidate
+	if override.CustomValidator != "" {
+		tmpl, err := template.New("custom_validator_" + override.TypeName).
+			Parse(override.CustomValidator)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"bad 'custom_validator' template for '%s': %s",
+				override.TypeName,
+				err.Error(),
+			)
+		}
+		customValidate = convertUserTmpl(tmpl)
+	}
+
+	nullableCustomValidate := identityCustomValidate
+	if override.NullableCustomValidator != "" {
+		tmpl, err := template.New("nullable_custom_validator_" + override.TypeName).
+			Parse(override.NullableCustomValidator)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"bad 'nullable_custom_validator' template for '%s': %s",
+				override.TypeName,
+				err.Error(),
+			)
+		}
+		nullableCustomValidate = convertUserTmpl(tmpl)
+	}
+
 	if len(override.TypeName) == 0 ||
 		len(override.NullableTypeName) == 0 {
 		return nil, fmt.Errorf(
@@ -232,16 +270,18 @@ func (r *Resolver) createInfoFromOverride(override config.ColTypeOverride) (*Inf
 	}
 
 	return &Info{
-		Name:            override.TypeName,
-		Pkg:             override.Pkg,
-		NullName:        "*" + override.TypeName,
-		ScanNullName:    override.NullableTypeName,
-		NullConvertFunc: convertFunc,
-		NullPkg:         override.NullPkg,
-		SqlReceiver:     refWrap,
-		NullSqlReceiver: refWrap,
-		SqlArgument:     idWrap,
-		NullSqlArgument: idWrap,
+		Name:                    override.TypeName,
+		Pkg:                     override.Pkg,
+		NullName:                "*" + override.TypeName,
+		ScanNullName:            override.NullableTypeName,
+		NullConvertFunc:         convertFunc,
+		NullPkg:                 override.NullPkg,
+		SqlReceiver:             refWrap,
+		NullSqlReceiver:         refWrap,
+		SqlArgument:             idWrap,
+		NullSqlArgument:         idWrap,
+		CustomValidator:         customValidate,
+		NullableCustomValidator: nullableCustomValidate,
 	}, nil
 }
 
@@ -309,6 +349,10 @@ func identityConvert(v string) string {
 	return v
 }
 
+func identityCustomValidate(v string) string {
+	return "error(nil)"
+}
+
 func convertUserTmpl(tmpl *template.Template) func(string) string {
 	return func(v string) string {
 		type tmplCtx struct {
@@ -366,102 +410,118 @@ func arrayConvert(
 //
 
 var stringGoTypeInfo Info = Info{
-	Name:            "string",
-	NullName:        "*string",
-	ScanNullName:    "sql.NullString",
-	ScanNullPkg:     `"database/sql"`,
-	NullConvertFunc: convertCall("convertNullString"),
-	SqlReceiver:     refWrap,
-	NullSqlReceiver: refWrap,
-	SqlArgument:     idWrap,
-	NullSqlArgument: idWrap,
+	Name:                    "string",
+	NullName:                "*string",
+	ScanNullName:            "sql.NullString",
+	ScanNullPkg:             `"database/sql"`,
+	NullConvertFunc:         convertCall("convertNullString"),
+	SqlReceiver:             refWrap,
+	NullSqlReceiver:         refWrap,
+	SqlArgument:             idWrap,
+	NullSqlArgument:         idWrap,
+	CustomValidator:         identityCustomValidate,
+	NullableCustomValidator: identityCustomValidate,
 }
 
 var boolGoTypeInfo Info = Info{
-	Name:            "bool",
-	NullName:        "*bool",
-	ScanNullName:    "sql.NullBool",
-	ScanNullPkg:     `"database/sql"`,
-	NullConvertFunc: convertCall("convertNullBool"),
-	SqlReceiver:     refWrap,
-	NullSqlReceiver: refWrap,
-	SqlArgument:     idWrap,
-	NullSqlArgument: idWrap,
+	Name:                    "bool",
+	NullName:                "*bool",
+	ScanNullName:            "sql.NullBool",
+	ScanNullPkg:             `"database/sql"`,
+	NullConvertFunc:         convertCall("convertNullBool"),
+	SqlReceiver:             refWrap,
+	NullSqlReceiver:         refWrap,
+	SqlArgument:             idWrap,
+	NullSqlArgument:         idWrap,
+	CustomValidator:         identityCustomValidate,
+	NullableCustomValidator: identityCustomValidate,
 }
 
 var timeGoTypeInfo Info = Info{
-	Pkg:             `"time"`,
-	Name:            "time.Time",
-	NullName:        "*time.Time",
-	ScanNullName:    "pggenNullTime",
-	ScanNullPkg:     "",
-	NullConvertFunc: convertCall("convertNullTime"),
-	SqlReceiver:     refWrap,
-	NullSqlReceiver: refWrap,
-	SqlArgument:     idWrap,
-	NullSqlArgument: idWrap,
+	Pkg:                     `"time"`,
+	Name:                    "time.Time",
+	NullName:                "*time.Time",
+	ScanNullName:            "pggenNullTime",
+	ScanNullPkg:             "",
+	NullConvertFunc:         convertCall("convertNullTime"),
+	SqlReceiver:             refWrap,
+	NullSqlReceiver:         refWrap,
+	SqlArgument:             idWrap,
+	NullSqlArgument:         idWrap,
+	CustomValidator:         identityCustomValidate,
+	NullableCustomValidator: identityCustomValidate,
 }
 
 var timezGoTypeInfo Info = Info{
-	Pkg:                 `"time"`,
-	Name:                "time.Time",
-	NullName:            "*time.Time",
-	ScanNullName:        "pggenNullTime",
-	ScanNullPkg:         "",
-	NullConvertFunc:     convertCall("convertNullTime"),
-	SqlReceiver:         refWrap,
-	NullSqlReceiver:     refWrap,
-	SqlArgument:         idWrap,
-	NullSqlArgument:     idWrap,
-	IsTimestampWithZone: true,
+	Pkg:                     `"time"`,
+	Name:                    "time.Time",
+	NullName:                "*time.Time",
+	ScanNullName:            "pggenNullTime",
+	ScanNullPkg:             "",
+	NullConvertFunc:         convertCall("convertNullTime"),
+	SqlReceiver:             refWrap,
+	NullSqlReceiver:         refWrap,
+	SqlArgument:             idWrap,
+	NullSqlArgument:         idWrap,
+	IsTimestampWithZone:     true,
+	CustomValidator:         identityCustomValidate,
+	NullableCustomValidator: identityCustomValidate,
 }
 
 var intervalGoTypeInfo Info = Info{
-	Pkg:             `"time"`,
-	Name:            "time.Duration",
-	NullName:        "*time.Duration",
-	ScanNullName:    "pggenNullDuration",
-	ScanNullPkg:     "",
-	NullConvertFunc: convertCall("convertNullDuration"),
-	SqlReceiver:     refWrap,
-	NullSqlReceiver: refWrap,
-	SqlArgument:     idWrap,
-	NullSqlArgument: idWrap,
+	Pkg:                     `"time"`,
+	Name:                    "time.Duration",
+	NullName:                "*time.Duration",
+	ScanNullName:            "pggenNullDuration",
+	ScanNullPkg:             "",
+	NullConvertFunc:         convertCall("convertNullDuration"),
+	SqlReceiver:             refWrap,
+	NullSqlReceiver:         refWrap,
+	SqlArgument:             idWrap,
+	NullSqlArgument:         idWrap,
+	CustomValidator:         identityCustomValidate,
+	NullableCustomValidator: identityCustomValidate,
 }
 
 var int64GoTypeInfo Info = Info{
-	Name:            "int64",
-	NullName:        "*int64",
-	ScanNullName:    "sql.NullInt64",
-	ScanNullPkg:     `"database/sql"`,
-	NullConvertFunc: convertCall("convertNullInt64"),
-	SqlReceiver:     refWrap,
-	NullSqlReceiver: refWrap,
-	SqlArgument:     idWrap,
-	NullSqlArgument: idWrap,
+	Name:                    "int64",
+	NullName:                "*int64",
+	ScanNullName:            "sql.NullInt64",
+	ScanNullPkg:             `"database/sql"`,
+	NullConvertFunc:         convertCall("convertNullInt64"),
+	SqlReceiver:             refWrap,
+	NullSqlReceiver:         refWrap,
+	SqlArgument:             idWrap,
+	NullSqlArgument:         idWrap,
+	CustomValidator:         identityCustomValidate,
+	NullableCustomValidator: identityCustomValidate,
 }
 
 var float64GoTypeInfo Info = Info{
-	Name:            "float64",
-	NullName:        "*float64",
-	ScanNullName:    "sql.NullFloat64",
-	ScanNullPkg:     `"database/sql"`,
-	NullConvertFunc: convertCall("convertNullFloat64"),
-	SqlReceiver:     refWrap,
-	NullSqlReceiver: refWrap,
-	SqlArgument:     idWrap,
-	NullSqlArgument: idWrap,
+	Name:                    "float64",
+	NullName:                "*float64",
+	ScanNullName:            "sql.NullFloat64",
+	ScanNullPkg:             `"database/sql"`,
+	NullConvertFunc:         convertCall("convertNullFloat64"),
+	SqlReceiver:             refWrap,
+	NullSqlReceiver:         refWrap,
+	SqlArgument:             idWrap,
+	NullSqlArgument:         idWrap,
+	CustomValidator:         identityCustomValidate,
+	NullableCustomValidator: identityCustomValidate,
 }
 
 var byteArrayGoTypeInfo Info = Info{
-	Name:            "[]byte",
-	NullName:        "*[]byte",
-	ScanNullName:    "*[]byte",
-	NullConvertFunc: identityConvert,
-	SqlReceiver:     refWrap,
-	NullSqlReceiver: refWrap,
-	SqlArgument:     idWrap,
-	NullSqlArgument: idWrap,
+	Name:                    "[]byte",
+	NullName:                "*[]byte",
+	ScanNullName:            "*[]byte",
+	NullConvertFunc:         identityConvert,
+	SqlReceiver:             refWrap,
+	NullSqlReceiver:         refWrap,
+	SqlArgument:             idWrap,
+	NullSqlArgument:         idWrap,
+	CustomValidator:         identityCustomValidate,
+	NullableCustomValidator: identityCustomValidate,
 }
 
 var primitveGoTypes = map[string]bool{

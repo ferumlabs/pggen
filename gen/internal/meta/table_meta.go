@@ -782,6 +782,12 @@ func (tr *tableResolver) typeInfoOfCol(conf *config.TableConfig, colName string,
 		SqlArgument:         toConverter,
 		NullSqlArgument:     nullToConverter,
 		IsTimestampWithZone: false,
+		CustomValidator: func(v string) string {
+			return "error(nil)"
+		},
+		NullableCustomValidator: func(v string) string {
+			return "error(nil)"
+		},
 	}, nil
 }
 
