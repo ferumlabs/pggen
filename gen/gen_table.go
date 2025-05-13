@@ -874,6 +874,14 @@ func (p *pgClientImpl) bulkUpsertBatch{{ .GoName }}(
 		vals = append(vals, {{ if .Meta.Config.BoxResults }}&{{ end }}val)
 	}
 
+	if len(vals) != len(values) {
+		return nil, fmt.Errorf(
+			"BulkUpsert{{ .GoName }}: %d rows inserted, expected %d",
+			len(vals),
+			len(values),
+		)
+	}
+
 	return vals, nil
 }
 
